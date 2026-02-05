@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000"/>
+  <g fill="none" stroke="#fff" stroke-width="16">
+    <rect x="84" y="92" width="72" height="72" rx="10"/>
+    <rect x="172" y="92" width="72" height="72" rx="10"/>
+    <rect x="260" y="92" width="72" height="72" rx="10"/>
+    <rect x="348" y="92" width="72" height="72" rx="10"/>
+  </g>
+  <text x="80" y="300" font-family="ui-sans-serif, system-ui, -apple-system" font-size="72" fill="#fff" font-weight="700">WORD</text>
+  <text x="80" y="380" font-family="ui-sans-serif, system-ui, -apple-system" font-size="72" fill="#22c55e" font-weight="700">HELP</text>
+</svg>
