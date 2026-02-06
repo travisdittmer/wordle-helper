@@ -37,9 +37,22 @@ export default function Home() {
   const [history, setHistory] = useState<Array<{ guess: string; pattern: Pattern }>>([]);
   const [showTop, setShowTop] = useState<boolean>(false);
   const [topN, setTopN] = useState<number>(10);
+
+  const PAST_WEIGHT_KEY = 'wordle-helper:past-answer-weight:v1';
+
   // Slider: how likely a previously-used Wordle answer is, relative to unused answers.
   // 0 = treat past answers as impossible; 1 = no penalty.
-  const [pastAnswerWeight, setPastAnswerWeight] = useState<number>(0.05);
+  const [pastAnswerWeight, setPastAnswerWeight] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(PAST_WEIGHT_KEY);
+      if (!raw) return 0.05;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return 0.05;
+      return Math.max(0, Math.min(1, n));
+    } catch {
+      return 0.05;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   const [isComputing, setIsComputing] = useState<boolean>(false);
   const [lastComputeMs, setLastComputeMs] = useState<number | null>(null);
@@ -168,8 +181,13 @@ export default function Home() {
     setGuessToRecommended(next);
   }
 
-  // Recompute recommendation when slider changes.
+  // Persist + recompute recommendation when slider changes.
   useEffect(() => {
+    try {
+      localStorage.setItem(PAST_WEIGHT_KEY, String(pastAnswerWeight));
+    } catch {
+      // ignore
+    }
     computeRecommended(candidates);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastAnswerWeight]);
