@@ -39,10 +39,8 @@ export function knownPastAnswers(now = new Date()): Set<string> {
 }
 
 /**
- * Option A: exclude all known past "answer of the day" words from candidates.
+ * Default: do NOT exclude. Keep all candidates; consumers may downweight past answers.
  */
-export function initialCandidates(possibleWords: readonly string[], now = new Date()): string[] {
-  const past = knownPastAnswers(now);
-  if (past.size === 0) return [...possibleWords];
-  return possibleWords.filter((w) => !past.has(w.toLowerCase()));
+export function initialCandidates(possibleWords: readonly string[]): string[] {
+  return [...possibleWords];
 }

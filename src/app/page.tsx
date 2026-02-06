@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
-import { initialCandidates, todayKey } from '@/lib/wordle/history';
+import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/history';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 
@@ -37,6 +37,9 @@ export default function Home() {
   const [history, setHistory] = useState<Array<{ guess: string; pattern: Pattern }>>([]);
   const [showTop, setShowTop] = useState<boolean>(false);
   const [topN, setTopN] = useState<number>(10);
+  // Slider: how likely a previously-used Wordle answer is, relative to unused answers.
+  // 0 = treat past answers as impossible; 1 = no penalty.
+  const [pastAnswerWeight, setPastAnswerWeight] = useState<number>(0.05);
   const [error, setError] = useState<string | null>(null);
   const [isComputing, setIsComputing] = useState<boolean>(false);
   const [lastComputeMs, setLastComputeMs] = useState<number | null>(null);
@@ -54,7 +57,7 @@ export default function Home() {
     if (!w) return;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', candidates: nextCandidates });
+    w.postMessage({ type: 'compute', candidates: nextCandidates, pastAnswerWeight });
   }
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
@@ -127,12 +130,18 @@ export default function Home() {
     return isValidPattern(p) ? (p as Pattern) : null;
   }, [tiles]);
 
+  const weights = useMemo(() => {
+    const past = knownPastAnswers(new Date());
+    const w = Math.max(0, Math.min(1, pastAnswerWeight));
+    return candidates.map((x) => (past.has(x) ? w : 1));
+  }, [candidates, pastAnswerWeight]);
+
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
     // Keep this reasonably fast on mobile by limiting the search space a bit when candidates is huge.
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
-    return topGuesses({ candidates, allowedGuesses: space, limit: topN });
-  }, [showTop, candidates, allowedGuesses, topN]);
+    return topGuesses({ candidates, weights, allowedGuesses: space, limit: topN });
+  }, [showTop, candidates, weights, allowedGuesses, topN]);
 
   function setGuessToRecommended(nextCandidates: string[]) {
     computeRecommended(nextCandidates);
@@ -159,6 +168,12 @@ export default function Home() {
     setGuessToRecommended(next);
   }
 
+  // Recompute recommendation when slider changes.
+  useEffect(() => {
+    computeRecommended(candidates);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastAnswerWeight]);
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
       <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8">
@@ -168,7 +183,7 @@ export default function Home() {
             Probe-word friendly solver (entropy early, then finishes with candidates).
           </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-500">
-            No-repeats policy: excluding {POSSIBLE_WORDS.length - candidates.length} historical answers.
+            Past-answer penalty: {Math.round(pastAnswerWeight * 100)}% likely (relative to unused answers).
           </p>
         </header>
 
@@ -184,6 +199,28 @@ export default function Home() {
             >
               Reset
             </button>
+          </div>
+
+          <div className="mt-4">
+            <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Past answer weight</div>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={pastAnswerWeight}
+                onChange={(e) => setPastAnswerWeight(Number(e.target.value))}
+                className="w-full"
+                aria-label="Past answer weight"
+              />
+              <div className="w-14 text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+                {Math.round(pastAnswerWeight * 100)}%
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+              0% = never allow past answers • 100% = treat them like any other word
+            </div>
           </div>
 
           <div className="mt-4">

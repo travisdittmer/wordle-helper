@@ -1,8 +1,9 @@
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
+import { knownPastAnswers } from './history';
 import { bestNextGuessHeuristic } from './solver_fast';
 
 export type WorkerRequest =
-  | { type: 'compute'; candidates: string[] }
+  | { type: 'compute'; candidates: string[]; pastAnswerWeight?: number }
   | { type: 'ping' };
 
 export type WorkerResponse =
@@ -20,8 +21,14 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   if (msg.type !== 'compute') return;
 
   const t0 = performance.now();
+
+  const pastWeight = Math.max(0, Math.min(1, msg.pastAnswerWeight ?? 0.05));
+  const past = knownPastAnswers(new Date());
+  const weights = msg.candidates.map((w) => (past.has(w) ? pastWeight : 1));
+
   const { guess, score } = bestNextGuessHeuristic({
     candidates: msg.candidates,
+    weights,
     allowedGuesses,
     finishThreshold: 15,
     shortlistSize: 2500,
