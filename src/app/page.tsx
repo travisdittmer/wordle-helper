@@ -149,6 +149,14 @@ export default function Home() {
     return candidates.map((x) => (past.has(x) ? w : 1));
   }, [candidates, pastAnswerWeight]);
 
+  const remainingCandidatesDisplay = useMemo(() => {
+    // UX rule:
+    // - at 0% (never allow past answers), show the count of *eligible* candidates (non-zero weight)
+    // - otherwise, show the full candidate set size
+    if (pastAnswerWeight === 0) return weights.filter((x) => x > 0).length;
+    return candidates.length;
+  }, [candidates.length, pastAnswerWeight, weights]);
+
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
     // Keep this reasonably fast on mobile by limiting the search space a bit when candidates is huge.
@@ -209,7 +217,7 @@ export default function Home() {
           <div className="flex items-baseline justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Remaining candidates</div>
-              <div className="text-2xl font-semibold">{candidates.length.toLocaleString()}</div>
+              <div className="text-2xl font-semibold">{remainingCandidatesDisplay.toLocaleString()}</div>
             </div>
             <button
               onClick={onReset}
