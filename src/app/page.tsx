@@ -38,6 +38,7 @@ export default function Home() {
   const [history, setHistory] = useState<Array<{ guess: string; pattern: Pattern }>>([]);
   const [showTop, setShowTop] = useState<boolean>(false);
   const [topN, setTopN] = useState<number>(10);
+  const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   const PAST_WEIGHT_KEY = 'wordle-helper:past-answer-weight:v1';
 
@@ -63,6 +64,7 @@ export default function Home() {
   const latestRequestedCandidateCountRef = useRef(0);
 
   const allowedGuesses = useMemo(() => Array.from(new Set([...ALLOWED_WORDS, ...POSSIBLE_WORDS])), []);
+  const [broadCandidates, setBroadCandidates] = useState<string[]>(() => Array.from(new Set([...ALLOWED_WORDS, ...POSSIBLE_WORDS])));
   const allowedGuessSet = useMemo(() => new Set(allowedGuesses), [allowedGuesses]);
   const initialCandidateCount = useMemo(() => initialCandidates(POSSIBLE_WORDS).length, []);
 
@@ -199,25 +201,43 @@ export default function Home() {
 
   function onApplyFeedback() {
     setError(null);
+    setDataWarning(null);
     const g = normalizeWord(guess);
     if (g.length !== 5) return setError('Guess must be 5 letters.');
     if (!allowedGuessSet.has(g)) return setError('Not in allowed guess list.');
     if (!pattern) return setError('Feedback pattern must be 5 tiles.');
 
-    const next = filterCandidatesByFeedback({ candidates, guess: g, pattern });
+    const nextCanonical = filterCandidatesByFeedback({ candidates, guess: g, pattern });
+    const nextBroad = filterCandidatesByFeedback({ candidates: broadCandidates, guess: g, pattern });
+
+    let next = nextCanonical;
+
+    // Robust fallback for stale candidate lists: if canonical list is exhausted or too narrow,
+    // continue from the broader allowed-word-constrained set.
+    if (nextCanonical.length === 0 && nextBroad.length > 0) {
+      next = nextBroad;
+      setDataWarning('Candidate list appears stale; using broader allowed-word matches. Consider refreshing possible_words.txt.');
+    } else if (nextCanonical.length === 1 && nextBroad.length > 1) {
+      next = nextBroad;
+      setDataWarning('Canonical candidate list may be missing current answers; using broader allowed-word matches.');
+    }
+
     if (next.length === 0) {
       return setError('No candidates remain. Double-check your feedback tiles for this guess.');
     }
 
     setHistory((h) => [...h, { guess: g, pattern }]);
+    setBroadCandidates(nextBroad);
     setCandidates(next);
     setGuessToRecommended(next);
   }
 
   function onReset() {
     setError(null);
+    setDataWarning(null);
     const next = initialCandidates(POSSIBLE_WORDS);
     setCandidates(next);
+    setBroadCandidates(allowedGuesses);
     setHistory([]);
     setGuessToRecommended(next);
   }
@@ -322,6 +342,7 @@ export default function Home() {
             </div>
 
             {error && <div className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
+            {dataWarning && <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">{dataWarning}</div>}
 
             <div className="mt-4 flex gap-3">
               <button
