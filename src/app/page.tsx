@@ -6,6 +6,7 @@ import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/history';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
+import { isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
 
 const TILE_ORDER: Tile[] = ['B', 'Y', 'G'];
 
@@ -58,8 +59,12 @@ export default function Home() {
   const [lastComputeMs, setLastComputeMs] = useState<number | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
+  const latestRequestedCandidateCountRef = useRef(0);
 
   const allowedGuesses = useMemo(() => Array.from(new Set([...ALLOWED_WORDS, ...POSSIBLE_WORDS])), []);
+  const allowedGuessSet = useMemo(() => new Set(allowedGuesses), [allowedGuesses]);
+  const initialCandidateCount = useMemo(() => initialCandidates(POSSIBLE_WORDS).length, []);
 
   const [recommended, setRecommended] = useState<{ guess: string; score: number } | null>(null);
 
@@ -68,9 +73,20 @@ export default function Home() {
   function computeRecommended(nextCandidates: string[]) {
     const w = workerRef.current;
     if (!w) return;
+
+    // If feedback became inconsistent and no candidates remain, avoid worker throws/races.
+    if (nextCandidates.length === 0) {
+      setIsComputing(false);
+      setLastComputeMs(null);
+      setRecommended(null);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+    latestRequestedCandidateCountRef.current = nextCandidates.length;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', candidates: nextCandidates, pastAnswerWeight });
+    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates, pastAnswerWeight });
   }
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
@@ -103,15 +119,29 @@ export default function Home() {
 
     w.onmessage = (ev: MessageEvent<WorkerResponse>) => {
       const msg = ev.data;
+
+      // Ignore stale responses from older worker requests.
+      if (isStaleWorkerResponse(msg, requestIdRef.current)) {
+        return;
+      }
+
+      if (msg.type === 'error') {
+        setError(`Solver error: ${msg.message}`);
+        setIsComputing(false);
+        setLastComputeMs(null);
+        return;
+      }
+
       if (msg.type === 'result') {
         setRecommended({ guess: msg.guess, score: msg.score });
         setGuess(msg.guess);
         setTiles(['B', 'B', 'B', 'B', 'B']);
+        setError(null);
         setIsComputing(false);
         setLastComputeMs(msg.tookMs);
 
-        // Cache the first-guess result (only when we're at the initial candidate set for today).
-        if (candidates.length === initialCandidates(POSSIBLE_WORDS).length) {
+        // Cache only the startup recommendation so later-game results don't overwrite first-guess cache.
+        if (shouldCacheFirstGuess(latestRequestedCandidateCountRef.current, initialCandidateCount)) {
           saveCachedFirstGuess({ guess: msg.guess, score: msg.score });
         }
       }
@@ -120,16 +150,15 @@ export default function Home() {
     // Load cached first guess immediately (instant UI), then compute in background to refresh.
     const cached = loadCachedFirstGuess();
     if (cached) {
-      // Defer state updates to satisfy react-hooks/set-state-in-effect lint rule
-      setTimeout(() => {
+      queueMicrotask(() => {
         setRecommended(cached.score != null ? { guess: cached.guess, score: cached.score } : null);
         setGuess(cached.guess);
         setTiles(['B', 'B', 'B', 'B', 'B']);
-      }, 0);
+      });
     }
 
-    // initial compute (defer to avoid setState-in-effect lint rule)
-    setTimeout(() => computeRecommended(initialCandidates(POSSIBLE_WORDS)), 0);
+    // Initial compute.
+    queueMicrotask(() => computeRecommended(initialCandidates(POSSIBLE_WORDS)));
 
     return () => {
       w.terminate();
@@ -172,10 +201,14 @@ export default function Home() {
     setError(null);
     const g = normalizeWord(guess);
     if (g.length !== 5) return setError('Guess must be 5 letters.');
-    if (!allowedGuesses.includes(g)) return setError('Not in allowed guess list.');
+    if (!allowedGuessSet.has(g)) return setError('Not in allowed guess list.');
     if (!pattern) return setError('Feedback pattern must be 5 tiles.');
 
     const next = filterCandidatesByFeedback({ candidates, guess: g, pattern });
+    if (next.length === 0) {
+      return setError('No candidates remain. Double-check your feedback tiles for this guess.');
+    }
+
     setHistory((h) => [...h, { guess: g, pattern }]);
     setCandidates(next);
     setGuessToRecommended(next);
