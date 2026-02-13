@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "sync:wordlists": "node scripts/sync-wordlists.mjs"
   },
   "dependencies": {
     "next": "16.1.6",

@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
+import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/history';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
-import { isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
+import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
 
 const TILE_ORDER: Tile[] = ['B', 'Y', 'G'];
 
@@ -210,17 +210,8 @@ export default function Home() {
     const nextCanonical = filterCandidatesByFeedback({ candidates, guess: g, pattern });
     const nextBroad = filterCandidatesByFeedback({ candidates: broadCandidates, guess: g, pattern });
 
-    let next = nextCanonical;
-
-    // Robust fallback for stale candidate lists: if canonical list is exhausted or too narrow,
-    // continue from the broader allowed-word-constrained set.
-    if (nextCanonical.length === 0 && nextBroad.length > 0) {
-      next = nextBroad;
-      setDataWarning('Candidate list appears stale; using broader allowed-word matches. Consider refreshing possible_words.txt.');
-    } else if (nextCanonical.length === 1 && nextBroad.length > 1) {
-      next = nextBroad;
-      setDataWarning('Canonical candidate list may be missing current answers; using broader allowed-word matches.');
-    }
+    const { next, warning } = chooseCandidateSet(nextCanonical, nextBroad);
+    if (warning) setDataWarning(warning);
 
     if (next.length === 0) {
       return setError('No candidates remain. Double-check your feedback tiles for this guess.');
@@ -263,6 +254,9 @@ export default function Home() {
           </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-500">
             Past-answer penalty: {Math.round(pastAnswerWeight * 100)}% likely (relative to unused answers).
+          </p>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-500">
+            Wordlist snapshot: {new Date(WORDLIST_META.generatedAt).toLocaleDateString()} • possible {WORDLIST_META.possibleWordsCount}
           </p>
         </header>
 

@@ -20,6 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Wordlist maintenance
+
+Refresh generated wordlists and keep `possible_words` in sync with known answers/overrides:
+
+```bash
+npm run sync:wordlists
+```
+
+If NYT introduces answers not present in the legacy list, add them to:
+
+- `src/data/answer_overrides.txt`
+
+Then rerun `npm run sync:wordlists`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
