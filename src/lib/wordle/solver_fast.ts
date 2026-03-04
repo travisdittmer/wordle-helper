@@ -8,6 +8,8 @@ export type NextGuessFastOptions = {
   finishThreshold?: number;
   /** Number of guesses to fully score with entropy (picked by heuristic). */
   shortlistSize?: number;
+  /** Enable two-step lookahead when candidates are within this range. */
+  lookaheadThreshold?: number;
 };
 
 function entropyFromBucketWeights(totalWeight: number, bucketWeights: number[]): number {
@@ -95,17 +97,124 @@ function buildFreqs(candidates: readonly string[], weights?: readonly number[]) 
   return { letterFreq, posFreq };
 }
 
+/**
+ * Two-step lookahead: for a given guess, compute the expected number of
+ * remaining candidates after the best possible second guess.
+ *
+ * Lower is better (fewer remaining candidates = closer to solving).
+ */
+function twoStepExpectedRemaining(
+  guess: string,
+  candidates: readonly string[],
+  weights: readonly number[] | undefined,
+  allowedGuesses: readonly string[],
+): number {
+  // Partition candidates into buckets by feedback pattern.
+  const buckets = new Map<Pattern, { indices: number[]; totalWeight: number }>();
+  let grandTotal = 0;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const w = weights ? (weights[i] ?? 0) : 1;
+    if (w <= 0) continue;
+    grandTotal += w;
+    const p = feedbackPattern(guess, candidates[i]);
+    const existing = buckets.get(p);
+    if (existing) {
+      existing.indices.push(i);
+      existing.totalWeight += w;
+    } else {
+      buckets.set(p, { indices: [i], totalWeight: w });
+    }
+  }
+
+  if (grandTotal <= 0) return Infinity;
+
+  let expectedRemaining = 0;
+
+  for (const [pattern, bucket] of buckets) {
+    const bucketProb = bucket.totalWeight / grandTotal;
+
+    // All green — solved!
+    if (pattern === 'GGGGG') {
+      // contributes 0 remaining
+      continue;
+    }
+
+    // Bucket of 1 — next guess is trivially the answer.
+    if (bucket.indices.length === 1) {
+      // contributes 1 remaining (but we know which one)
+      expectedRemaining += bucketProb * 1;
+      continue;
+    }
+
+    // Bucket of 2 — guess one, if wrong the other is the answer.
+    if (bucket.indices.length === 2) {
+      expectedRemaining += bucketProb * 1.5; // average 1.5 effective remaining
+      continue;
+    }
+
+    // For larger buckets, find the best second guess by entropy.
+    const subCandidates = bucket.indices.map((i) => candidates[i]);
+    const subWeights = weights ? bucket.indices.map((i) => weights[i]) : undefined;
+
+    // Build frequency heuristic for this sub-problem to pick a small shortlist.
+    const { letterFreq, posFreq } = buildFreqs(subCandidates, subWeights);
+
+    // Shortlist: top 30 from allowed guesses + all sub-candidates.
+    const probeScored = allowedGuesses.map((g) => ({ g, s: heuristicScore(g, letterFreq, posFreq) }));
+    probeScored.sort((a, b) => b.s - a.s);
+    const shortlist = new Set<string>(probeScored.slice(0, 30).map((x) => x.g));
+    for (const c of subCandidates) shortlist.add(c);
+
+    // Find best second guess by entropy on this sub-problem.
+    let bestSubEntropy = -Infinity;
+    for (const g2 of shortlist) {
+      const e = subWeights
+        ? scoreGuessWeightedEntropy(g2, subCandidates, subWeights)
+        : scoreGuessEntropy(g2, subCandidates);
+      if (e > bestSubEntropy) bestSubEntropy = e;
+    }
+
+    // Convert entropy to expected remaining candidates.
+    // With entropy H, we expect ~N/2^H remaining candidates.
+    const n = subCandidates.length;
+    const remaining = bestSubEntropy > 0 ? n / Math.pow(2, bestSubEntropy) : n;
+    expectedRemaining += bucketProb * Math.max(1, remaining);
+  }
+
+  return expectedRemaining;
+}
+
 export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: string; score: number } {
-  const { candidates, allowedGuesses, weights, finishThreshold = 15, shortlistSize = 2500 } = opts;
+  const { candidates, allowedGuesses, weights, finishThreshold = 50, shortlistSize = 2500, lookaheadThreshold = 200 } = opts;
   if (candidates.length === 0) throw new Error('No candidates remain (inconsistent feedback?)');
   if (candidates.length === 1) return { guess: candidates[0], score: Number.POSITIVE_INFINITY };
 
-  // If close to finishing, just entropy-score candidates directly.
+  // If close to finishing, entropy-score candidates and top probe words,
+  // giving a small bonus to actual candidates (since they could be the answer).
+  const candidateSet = new Set(candidates);
   if (candidates.length <= finishThreshold) {
+    const { letterFreq, posFreq } = buildFreqs(candidates, weights);
+
+    // Also consider top probe words in case one is strictly better
+    const probeScored = allowedGuesses
+      .filter((g) => !candidateSet.has(g))
+      .map((g) => ({ g, s: heuristicScore(g, letterFreq, posFreq) }));
+    probeScored.sort((a, b) => b.s - a.s);
+    const topProbes = probeScored.slice(0, Math.min(200, probeScored.length)).map((x) => x.g);
+
+    const searchSpace = [...candidates, ...topProbes];
+
+    // Candidate bonus: a candidate guess that happens to be the answer instantly solves.
+    // This is worth 1/N of the time (where N = effective candidate count).
+    const totalWeight = weights ? weights.reduce((a, b) => a + b, 0) : candidates.length;
+    const candidateBonus = totalWeight > 0 ? (1 / totalWeight) * Math.log2(totalWeight) : 0;
+
     let bestGuess = candidates[0];
     let bestScore = -Infinity;
-    for (const g of candidates) {
-      const s = weights ? scoreGuessWeightedEntropy(g, candidates, weights) : scoreGuessEntropy(g, candidates);
+    for (const g of searchSpace) {
+      let s = weights ? scoreGuessWeightedEntropy(g, candidates, weights) : scoreGuessEntropy(g, candidates);
+      if (candidateSet.has(g)) s += candidateBonus;
       if (s > bestScore) {
         bestScore = s;
         bestGuess = g;
@@ -122,15 +231,48 @@ export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: str
   const shortlist = scored.slice(0, Math.min(shortlistSize, scored.length)).map((x) => x.g);
 
   // 2) Full entropy on shortlist
-  let bestGuess = shortlist[0];
-  let bestScore = -Infinity;
+  const entropyScored: Array<{ g: string; entropy: number }> = [];
   for (const g of shortlist) {
     const s = weights ? scoreGuessWeightedEntropy(g, candidates, weights) : scoreGuessEntropy(g, candidates);
-    if (s > bestScore) {
-      bestScore = s;
-      bestGuess = g;
+    entropyScored.push({ g, entropy: s });
+  }
+  entropyScored.sort((a, b) => b.entropy - a.entropy);
+
+  // 3) Two-step lookahead on the top entropy-scoring guesses.
+  // Only when candidate count is in a range where lookahead is both
+  // useful (>2 candidates) and feasible (not too many to be slow).
+  if (candidates.length >= 3 && candidates.length <= lookaheadThreshold) {
+    // Take top N by entropy for lookahead re-ranking.
+    const lookaheadPool = entropyScored.slice(0, Math.min(50, entropyScored.length));
+
+    // Also include all candidates in the lookahead pool (they get a natural
+    // advantage since guessing the answer immediately solves it).
+    const poolSet = new Set(lookaheadPool.map((x) => x.g));
+    for (const c of candidates) {
+      if (!poolSet.has(c)) {
+        const e = weights ? scoreGuessWeightedEntropy(c, candidates, weights) : scoreGuessEntropy(c, candidates);
+        lookaheadPool.push({ g: c, entropy: e });
+      }
     }
+
+    let bestGuess = lookaheadPool[0].g;
+    let bestExpected = Infinity;
+    let bestEntropy = lookaheadPool[0].entropy;
+
+    for (const { g, entropy } of lookaheadPool) {
+      const expected = twoStepExpectedRemaining(g, candidates, weights, allowedGuesses);
+      // Prefer lower expected remaining; break ties with higher entropy.
+      if (expected < bestExpected || (expected === bestExpected && entropy > bestEntropy)) {
+        bestExpected = expected;
+        bestGuess = g;
+        bestEntropy = entropy;
+      }
+    }
+
+    return { guess: bestGuess, score: bestEntropy };
   }
 
-  return { guess: bestGuess, score: bestScore };
+  // Fallback: use single-step entropy when lookahead isn't applicable.
+  const best = entropyScored[0];
+  return { guess: best.g, score: best.entropy };
 }

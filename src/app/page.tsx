@@ -7,6 +7,7 @@ import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/hist
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
+import { frequencyWeights } from '@/lib/wordle/wordFrequency';
 
 const TILE_ORDER: Tile[] = ['B', 'Y', 'G'];
 
@@ -47,9 +48,9 @@ export default function Home() {
   const [pastAnswerWeight, setPastAnswerWeight] = useState<number>(() => {
     try {
       const raw = localStorage.getItem(PAST_WEIGHT_KEY);
-      if (!raw) return 0.05;
+      if (!raw) return 0;
       const n = Number(raw);
-      if (!Number.isFinite(n)) return 0.05;
+      if (!Number.isFinite(n)) return 0;
       return Math.max(0, Math.min(1, n));
     } catch {
       return 0.05;
@@ -177,7 +178,11 @@ export default function Home() {
   const weights = useMemo(() => {
     const past = knownPastAnswers(new Date());
     const w = Math.max(0, Math.min(1, pastAnswerWeight));
-    return candidates.map((x) => (past.has(x) ? w : 1));
+    const freqW = frequencyWeights(candidates);
+    return candidates.map((x, i) => {
+      const pastFactor = past.has(x) ? w : 1;
+      return pastFactor * freqW[i];
+    });
   }, [candidates, pastAnswerWeight]);
 
   const remainingCandidatesDisplay = useMemo(() => {
