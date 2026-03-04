@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/history';
@@ -8,6 +8,7 @@ import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
 import { frequencyWeights } from '@/lib/wordle/wordFrequency';
+import { seasonalBoosts } from '@/lib/wordle/seasonalBoost';
 
 const TILE_ORDER: Tile[] = ['B', 'Y', 'G'];
 
@@ -28,9 +29,65 @@ function tileClass(t: Tile): string {
   }
 }
 
+function tileClassSmall(t: Tile): string {
+  switch (t) {
+    case 'G':
+      return 'bg-emerald-600 text-white';
+    case 'Y':
+      return 'bg-amber-500 text-white';
+    case 'B':
+    default:
+      return 'bg-zinc-300 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50';
+  }
+}
+
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
 }
+
+type LetterState = 'correct' | 'present' | 'absent' | 'unknown';
+
+/** Derive keyboard letter states from guess history. */
+function deriveLetterStates(history: Array<{ guess: string; pattern: Pattern }>): Map<string, LetterState> {
+  const states = new Map<string, LetterState>();
+  for (const { guess, pattern } of history) {
+    for (let i = 0; i < 5; i++) {
+      const letter = guess[i];
+      const tile = pattern[i] as Tile;
+      const current = states.get(letter) ?? 'unknown';
+      if (tile === 'G') {
+        states.set(letter, 'correct');
+      } else if (tile === 'Y' && current !== 'correct') {
+        states.set(letter, 'present');
+      } else if (tile === 'B' && current === 'unknown') {
+        states.set(letter, 'absent');
+      }
+    }
+  }
+  return states;
+}
+
+function keyClass(state: LetterState): string {
+  switch (state) {
+    case 'correct':
+      return 'bg-emerald-600 border-emerald-700 text-white';
+    case 'present':
+      return 'bg-amber-500 border-amber-600 text-white';
+    case 'absent':
+      return 'bg-zinc-400 border-zinc-500 text-zinc-100 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500';
+    default:
+      return 'bg-zinc-200 border-zinc-300 text-zinc-900 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-50';
+  }
+}
+
+const KEYBOARD_ROWS = [
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+];
+
+// Past answer weight is always 0 (Wordle never reuses answers).
+const PAST_ANSWER_WEIGHT = 0;
 
 export default function Home() {
   const [candidates, setCandidates] = useState<string[]>(() => initialCandidates(POSSIBLE_WORDS));
@@ -40,25 +97,15 @@ export default function Home() {
   const [showTop, setShowTop] = useState<boolean>(false);
   const [topN, setTopN] = useState<number>(10);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
-
-  const PAST_WEIGHT_KEY = 'wordle-helper:past-answer-weight:v1';
-
-  // Slider: how likely a previously-used Wordle answer is, relative to unused answers.
-  // 0 = treat past answers as impossible; 1 = no penalty.
-  const [pastAnswerWeight, setPastAnswerWeight] = useState<number>(() => {
-    try {
-      const raw = localStorage.getItem(PAST_WEIGHT_KEY);
-      if (!raw) return 0;
-      const n = Number(raw);
-      if (!Number.isFinite(n)) return 0;
-      return Math.max(0, Math.min(1, n));
-    } catch {
-      return 0.05;
-    }
-  });
   const [error, setError] = useState<string | null>(null);
   const [isComputing, setIsComputing] = useState<boolean>(false);
   const [lastComputeMs, setLastComputeMs] = useState<number | null>(null);
+
+  // Undo stack: stores previous states so we can revert.
+  const [undoStack, setUndoStack] = useState<Array<{
+    candidates: string[];
+    broadCandidates: string[];
+  }>>([]);
 
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
@@ -73,11 +120,10 @@ export default function Home() {
 
   const FIRST_GUESS_CACHE_KEY = `wordle-helper:first-guess:v1:${todayKey()}`;
 
-  function computeRecommended(nextCandidates: string[]) {
+  const computeRecommended = useCallback((nextCandidates: string[]) => {
     const w = workerRef.current;
     if (!w) return;
 
-    // If feedback became inconsistent and no candidates remain, avoid worker throws/races.
     if (nextCandidates.length === 0) {
       setIsComputing(false);
       setLastComputeMs(null);
@@ -89,8 +135,8 @@ export default function Home() {
     latestRequestedCandidateCountRef.current = nextCandidates.length;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates, pastAnswerWeight });
-  }
+    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates, pastAnswerWeight: PAST_ANSWER_WEIGHT });
+  }, []);
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
     try {
@@ -115,7 +161,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // Create worker once
     if (workerRef.current) return;
     const w = new Worker(new URL('../lib/wordle/solverWorker.ts', import.meta.url), { type: 'module' });
     workerRef.current = w;
@@ -123,7 +168,6 @@ export default function Home() {
     w.onmessage = (ev: MessageEvent<WorkerResponse>) => {
       const msg = ev.data;
 
-      // Ignore stale responses from older worker requests.
       if (isStaleWorkerResponse(msg, requestIdRef.current)) {
         return;
       }
@@ -143,14 +187,12 @@ export default function Home() {
         setIsComputing(false);
         setLastComputeMs(msg.tookMs);
 
-        // Cache only the startup recommendation so later-game results don't overwrite first-guess cache.
         if (shouldCacheFirstGuess(latestRequestedCandidateCountRef.current, initialCandidateCount)) {
           saveCachedFirstGuess({ guess: msg.guess, score: msg.score });
         }
       }
     };
 
-    // Load cached first guess immediately (instant UI), then compute in background to refresh.
     const cached = loadCachedFirstGuess();
     if (cached) {
       queueMicrotask(() => {
@@ -160,7 +202,6 @@ export default function Home() {
       });
     }
 
-    // Initial compute.
     queueMicrotask(() => computeRecommended(initialCandidates(POSSIBLE_WORDS)));
 
     return () => {
@@ -177,32 +218,38 @@ export default function Home() {
 
   const weights = useMemo(() => {
     const past = knownPastAnswers(new Date());
-    const w = Math.max(0, Math.min(1, pastAnswerWeight));
     const freqW = frequencyWeights(candidates);
+    const seasonal = seasonalBoosts(candidates);
     return candidates.map((x, i) => {
-      const pastFactor = past.has(x) ? w : 1;
-      return pastFactor * freqW[i];
+      const pastFactor = past.has(x) ? PAST_ANSWER_WEIGHT : 1;
+      return pastFactor * freqW[i] * seasonal[i];
     });
-  }, [candidates, pastAnswerWeight]);
+  }, [candidates]);
 
   const remainingCandidatesDisplay = useMemo(() => {
-    // UX rule:
-    // - at 0% (never allow past answers), show the count of *eligible* candidates (non-zero weight)
-    // - otherwise, show the full candidate set size
-    if (pastAnswerWeight === 0) return weights.filter((x) => x > 0).length;
-    return candidates.length;
-  }, [candidates.length, pastAnswerWeight, weights]);
+    return weights.filter((x) => x > 0).length;
+  }, [weights]);
+
+  // Confidence indicator: describe how close we are to solving.
+  const confidenceText = useMemo(() => {
+    const n = remainingCandidatesDisplay;
+    if (n === 0) return null;
+    if (n === 1) return 'Solved!';
+    if (n === 2) return '2 left — 50/50 shot';
+    if (n <= 5) return `${n} left — should solve next guess`;
+    if (n <= 15) return `${n} left — likely 1-2 more guesses`;
+    if (n <= 50) return `${n} left — 2-3 guesses to go`;
+    return null;
+  }, [remainingCandidatesDisplay]);
 
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
-    // Keep this reasonably fast on mobile by limiting the search space a bit when candidates is huge.
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
     return topGuesses({ candidates, weights, allowedGuesses: space, limit: topN });
   }, [showTop, candidates, weights, allowedGuesses, topN]);
 
-  function setGuessToRecommended(nextCandidates: string[]) {
-    computeRecommended(nextCandidates);
-  }
+  // Derive keyboard letter states from history.
+  const letterStates = useMemo(() => deriveLetterStates(history), [history]);
 
   function onApplyFeedback() {
     setError(null);
@@ -222,10 +269,25 @@ export default function Home() {
       return setError('No candidates remain. Double-check your feedback tiles for this guess.');
     }
 
+    // Push current state to undo stack before applying.
+    setUndoStack((stack) => [...stack, { candidates, broadCandidates }]);
     setHistory((h) => [...h, { guess: g, pattern }]);
     setBroadCandidates(nextBroad);
     setCandidates(next);
-    setGuessToRecommended(next);
+    computeRecommended(next);
+  }
+
+  function onUndo() {
+    if (undoStack.length === 0 || history.length === 0) return;
+
+    const prev = undoStack[undoStack.length - 1];
+    setUndoStack((stack) => stack.slice(0, -1));
+    setHistory((h) => h.slice(0, -1));
+    setCandidates(prev.candidates);
+    setBroadCandidates(prev.broadCandidates);
+    setError(null);
+    setDataWarning(null);
+    computeRecommended(prev.candidates);
   }
 
   function onReset() {
@@ -235,33 +297,20 @@ export default function Home() {
     setCandidates(next);
     setBroadCandidates(allowedGuesses);
     setHistory([]);
-    setGuessToRecommended(next);
+    setUndoStack([]);
+    computeRecommended(next);
   }
-
-  // Persist + recompute recommendation when slider changes.
-  useEffect(() => {
-    try {
-      localStorage.setItem(PAST_WEIGHT_KEY, String(pastAnswerWeight));
-    } catch {
-      // ignore
-    }
-    computeRecommended(candidates);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pastAnswerWeight]);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
       <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8">
-        <header className="flex flex-col gap-2">
+        <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Wordle Helper</h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Probe-word friendly solver (entropy early, then finishes with candidates).
-          </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">
-            Past-answer penalty: {Math.round(pastAnswerWeight * 100)}% likely (relative to unused answers).
+            Entropy solver with two-step lookahead and frequency priors.
           </p>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-500">
-            Wordlist snapshot: {new Date(WORDLIST_META.generatedAt).toLocaleDateString()} • possible {WORDLIST_META.possibleWordsCount}
+            Wordlist: {new Date(WORDLIST_META.generatedAt).toLocaleDateString()} — {WORDLIST_META.possibleWordsCount} possible answers
           </p>
         </header>
 
@@ -269,35 +318,29 @@ export default function Home() {
           <div className="flex items-baseline justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Remaining candidates</div>
-              <div className="text-2xl font-semibold">{remainingCandidatesDisplay.toLocaleString()}</div>
-            </div>
-            <button
-              onClick={onReset}
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-            >
-              Reset
-            </button>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Past answer weight</div>
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={pastAnswerWeight}
-                onChange={(e) => setPastAnswerWeight(Number(e.target.value))}
-                className="w-full"
-                aria-label="Past answer weight"
-              />
-              <div className="w-14 text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                {Math.round(pastAnswerWeight * 100)}%
+              <div className="flex items-baseline gap-3">
+                <div className="text-2xl font-semibold">{remainingCandidatesDisplay.toLocaleString()}</div>
+                {confidenceText && remainingCandidatesDisplay > 1 && (
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">{confidenceText}</div>
+                )}
               </div>
             </div>
-            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-              0% = never allow past answers • 100% = treat them like any other word
+            <div className="flex gap-2">
+              {history.length > 0 && (
+                <button
+                  onClick={onUndo}
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                  title="Undo last guess"
+                >
+                  Undo
+                </button>
+              )}
+              <button
+                onClick={onReset}
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              >
+                Reset
+              </button>
             </div>
           </div>
 
@@ -316,11 +359,11 @@ export default function Home() {
               />
               {recommended && (
                 <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                  entropy: {Number.isFinite(recommended.score) ? recommended.score.toFixed(3) : '—'}
-                  {lastComputeMs != null ? ` • ${Math.round(lastComputeMs)}ms` : ''}
+                  entropy: {Number.isFinite(recommended.score) ? recommended.score.toFixed(3) : '\u2014'}
+                  {lastComputeMs != null ? ` \u2022 ${Math.round(lastComputeMs)}ms` : ''}
                 </div>
               )}
-              {isComputing && <div className="text-xs text-zinc-500 dark:text-zinc-400">computing…</div>}
+              {isComputing && <div className="text-xs text-zinc-500 dark:text-zinc-400">computing\u2026</div>}
             </div>
 
             <div className="mt-4">
@@ -337,7 +380,7 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Tap tiles to cycle: gray → yellow → green</div>
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Tap tiles to cycle: gray \u2192 yellow \u2192 green</div>
             </div>
 
             {error && <div className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
@@ -360,6 +403,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Colored tile history */}
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">History</h2>
@@ -374,9 +418,16 @@ export default function Home() {
           ) : (
             <ul className="mt-3 space-y-2">
               {history.map((h, idx) => (
-                <li key={idx} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <div className="font-mono text-sm">{h.guess.toUpperCase()}</div>
-                  <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{h.pattern}</div>
+                <li key={idx} className="flex items-center gap-1.5">
+                  {h.guess.split('').map((ch, ci) => (
+                    <div
+                      key={ci}
+                      className={`flex h-9 w-9 items-center justify-center rounded font-mono text-sm font-bold ${tileClassSmall(h.pattern[ci] as Tile)}`}
+                    >
+                      {ch.toUpperCase()}
+                    </div>
+                  ))}
+                  <span className="ml-2 text-xs text-zinc-400">{idx + 1}</span>
                 </li>
               ))}
             </ul>
@@ -421,6 +472,30 @@ export default function Home() {
           )}
         </section>
 
+        {/* Visual keyboard */}
+        {history.length > 0 && (
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <h2 className="text-sm font-semibold">Keyboard</h2>
+            <div className="mt-3 flex flex-col items-center gap-1.5">
+              {KEYBOARD_ROWS.map((row, ri) => (
+                <div key={ri} className="flex gap-1">
+                  {row.map((key) => {
+                    const state = letterStates.get(key) ?? 'unknown';
+                    return (
+                      <div
+                        key={key}
+                        className={`flex h-9 w-8 items-center justify-center rounded border text-xs font-bold uppercase ${keyClass(state)}`}
+                      >
+                        {key}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {candidates.length <= 25 && candidates.length > 1 && (
           <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="text-sm font-semibold">Remaining candidates</h2>
@@ -446,7 +521,7 @@ export default function Home() {
         )}
 
         <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-          Tip: if Wordle rejects a probe word, just type a different one—this solver uses a broad allowed list.
+          Tip: if Wordle rejects a probe word, just type a different one — this solver uses a broad allowed list.
         </footer>
       </main>
     </div>

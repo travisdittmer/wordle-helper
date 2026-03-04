@@ -1,5 +1,6 @@
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
 import { knownPastAnswers } from './history';
+import { seasonalBoosts } from './seasonalBoost';
 import { bestNextGuessHeuristic } from './solver_fast';
 import { frequencyWeights } from './wordFrequency';
 
@@ -28,12 +29,12 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
     const pastWeight = Math.max(0, Math.min(1, msg.pastAnswerWeight ?? 0));
     const past = knownPastAnswers(new Date());
 
-    // Combine past-answer penalty with word frequency prior.
-    // Frequency weights range [0.2, 1.0] — common words are more likely Wordle answers.
+    // Combine past-answer penalty, word frequency prior, and seasonal boosts.
     const freqWeights = frequencyWeights(msg.candidates);
+    const seasonal = seasonalBoosts(msg.candidates);
     const weights = msg.candidates.map((w, i) => {
       const pastFactor = past.has(w) ? pastWeight : 1;
-      return pastFactor * freqWeights[i];
+      return pastFactor * freqWeights[i] * seasonal[i];
     });
 
     const { guess, score } = bestNextGuessHeuristic({
