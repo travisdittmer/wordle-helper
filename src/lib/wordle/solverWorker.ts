@@ -1,6 +1,7 @@
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
 import { knownPastAnswers } from './history';
 import { bestNextGuessHeuristic } from './solver_fast';
+import { frequencyWeights } from './wordFrequency';
 
 export type WorkerRequest =
   | { type: 'compute'; requestId: number; candidates: string[]; pastAnswerWeight?: number }
@@ -24,15 +25,22 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   const t0 = performance.now();
 
   try {
-    const pastWeight = Math.max(0, Math.min(1, msg.pastAnswerWeight ?? 0.05));
+    const pastWeight = Math.max(0, Math.min(1, msg.pastAnswerWeight ?? 0));
     const past = knownPastAnswers(new Date());
-    const weights = msg.candidates.map((w) => (past.has(w) ? pastWeight : 1));
+
+    // Combine past-answer penalty with word frequency prior.
+    // Frequency weights range [0.2, 1.0] — common words are more likely Wordle answers.
+    const freqWeights = frequencyWeights(msg.candidates);
+    const weights = msg.candidates.map((w, i) => {
+      const pastFactor = past.has(w) ? pastWeight : 1;
+      return pastFactor * freqWeights[i];
+    });
 
     const { guess, score } = bestNextGuessHeuristic({
       candidates: msg.candidates,
       weights,
       allowedGuesses,
-      finishThreshold: 15,
+      finishThreshold: 50,
       shortlistSize: 2500,
     });
     const tookMs = performance.now() - t0;
