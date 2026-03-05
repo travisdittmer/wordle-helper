@@ -24,15 +24,24 @@ function yesterdayUtc() {
   return y;
 }
 
-async function fetchAnswer(dateStr) {
+async function fetchAnswer(dateStr, retries = 3) {
   const url = `${API_BASE}/${dateStr}.json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${dateStr}`);
-  const json = await res.json();
-  if (typeof json.solution !== 'string' || json.solution.length !== 5) {
-    throw new Error(`Invalid solution for ${dateStr}: ${JSON.stringify(json.solution)}`);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${dateStr}`);
+      const json = await res.json();
+      if (typeof json.solution !== 'string' || json.solution.length !== 5) {
+        throw new Error(`Invalid solution for ${dateStr}: ${JSON.stringify(json.solution)}`);
+      }
+      return json.solution.toLowerCase();
+    } catch (err) {
+      if (attempt === retries) throw err;
+      const delay = 1000 * attempt;
+      console.warn(`  Retry ${attempt}/${retries} for ${dateStr}: ${err.message} (waiting ${delay}ms)`);
+      await new Promise(r => setTimeout(r, delay));
+    }
   }
-  return json.solution.toLowerCase();
 }
 
 async function main() {

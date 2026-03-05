@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test src/**/*.test.ts && node --test scripts/*.test.mjs",
     "sync:wordlists": "node scripts/sync-wordlists.mjs",
     "fetch:answers": "node scripts/fetch-answers.mjs"
   },
