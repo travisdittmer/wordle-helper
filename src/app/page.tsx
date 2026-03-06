@@ -11,6 +11,7 @@ import { frequencyWeights } from '@/lib/wordle/wordFrequency';
 import { seasonalBoosts } from '@/lib/wordle/seasonalBoost';
 import { FeedbackTiles } from '@/components/FeedbackTiles';
 import { GuessHistory } from '@/components/GuessHistory';
+import { InfoModal } from '@/components/InfoModal';
 import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
 
@@ -277,57 +278,7 @@ export default function Home() {
           </p>
         </header>
 
-        {showInfo && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-20" onClick={() => setShowInfo(false)}>
-            <div
-              className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">How does this work?</h2>
-                <button
-                  onClick={() => setShowInfo(false)}
-                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="mt-4 space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
-                <p>
-                  This app helps you solve the daily Wordle by recommending the best guess at each step.
-                  You play Wordle normally — type the suggested word into Wordle, then tap the tiles here
-                  to match the colors Wordle gave you (gray, yellow, or green). Hit <strong>Apply feedback</strong> and
-                  the app narrows down the remaining possibilities and suggests your next guess.
-                </p>
-                <p>
-                  <strong>How it picks guesses:</strong> The solver uses a technique called <em>entropy maximization</em>.
-                  Entropy, in this context, measures how much information a guess will give you on average.
-                  A high-entropy guess splits the remaining words into many small, evenly-sized groups — no matter
-                  what color pattern comes back, you eliminate a large chunk of possibilities. A low-entropy guess
-                  might only rule out a few words.
-                </p>
-                <p>
-                  Think of it like playing 20 Questions optimally: the best question is one that, regardless of
-                  the answer, cuts the remaining options roughly in half. The solver does this with math — it
-                  simulates every possible color pattern for each candidate guess and picks the one that
-                  maximizes the expected information gain.
-                </p>
-                <p>
-                  <strong>Extra smarts:</strong> When the list gets small enough (under 200 words), the solver
-                  looks two steps ahead — it considers not just how good this guess is, but how well it sets up
-                  the <em>next</em> guess too. It also factors in word commonality (Wordle prefers everyday words
-                  like HOUSE over obscure ones like FJORD) and avoids words that have already been used as past
-                  Wordle answers.
-                </p>
-                <p>
-                  <strong>The entropy number</strong> shown next to each guess is measured in bits. An entropy of
-                  5.0 means the guess is expected to narrow things down by a factor of about 32 (2⁵). Higher is better.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <div className="flex items-baseline justify-between gap-4">
