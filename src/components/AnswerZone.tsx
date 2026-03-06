@@ -22,15 +22,15 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   let className: string;
 
   if (candidateCount === 1) {
-    className = "rounded-xl border border-emerald-700/50 bg-emerald-950/30 p-6";
+    className = "rounded-xl border border-emerald-300 bg-emerald-50 p-6 dark:border-emerald-700/50 dark:bg-emerald-950/30";
     content = (
       <>
-        <div className="text-sm font-medium text-emerald-400">Solved!</div>
+        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Solved!</div>
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="mt-1 font-mono text-4xl font-bold text-emerald-300 tracking-widest"
+          className="mt-1 font-mono text-4xl font-bold text-emerald-800 tracking-widest dark:text-emerald-300"
         >
           {candidates[0].toUpperCase()}
         </motion.div>

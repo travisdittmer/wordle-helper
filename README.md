@@ -1,24 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wordle Helper
 
-## Getting Started
+Solve Wordle faster. Get the best guess instantly, every day.
 
-First, run the development server:
+A mobile-first Wordle solver that uses entropy maximization to recommend the optimal guess at each step. Built with Next.js, installable as a PWA.
+
+## How it works
+
+1. **Enter your guess** -- type the word you guessed in Wordle, or use the solver's suggestion
+2. **Match the colors** -- tap each tile to cycle through gray, yellow, and green to match Wordle's feedback
+3. **Get your next guess** -- hit Apply and the solver narrows down possibilities and suggests the best next word
+
+The solver picks guesses that maximize information entropy -- each guess is chosen to eliminate the most possibilities regardless of what colors come back. When fewer than 200 candidates remain, it looks two steps ahead. It also factors in word commonality and avoids reusing past Wordle answers.
+
+## Features
+
+- Entropy-based solver with two-step lookahead
+- Adaptive Answer Zone -- shows suggestion, narrowed shortlist, or solved state at the top of the page
+- First-time onboarding walkthrough
+- Visual keyboard tracking letter states
+- Guess history with colored tiles
+- Top-N guess explorer for power users
+- Post-solve shareable emoji grid
+- Dark mode by default (matches Wordle's aesthetic)
+- Installable as a PWA
+- Runs entirely client-side via Web Worker
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev       # start dev server on port 3000
+npm run build     # production build
+npm run lint      # ESLint
+npm run test      # run all tests
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Wordlist maintenance
 
@@ -28,23 +43,20 @@ Refresh generated wordlists and keep `possible_words` in sync with known answers
 npm run sync:wordlists
 ```
 
-If NYT introduces answers not present in the legacy list, add them to:
+If NYT introduces answers not present in the legacy list, add them to `src/data/answer_overrides.txt` then rerun `npm run sync:wordlists`.
 
-- `src/data/answer_overrides.txt`
+Fetch confirmed answers from the NYT API:
 
-Then rerun `npm run sync:wordlists`.
+```bash
+npm run fetch:answers
+```
 
-## Learn More
+A daily GitHub Action runs both scripts at 5:30 AM UTC and auto-commits new answers.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS v4
+- framer-motion
+- TypeScript
