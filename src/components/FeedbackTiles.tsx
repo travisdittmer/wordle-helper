@@ -37,7 +37,7 @@ export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProp
           <button
             key={i}
             onClick={() => onTilesChange(tiles.map((x, j) => (j === i ? nextTile(x) : x)))}
-            className={`h-12 w-12 rounded-lg text-lg font-bold transition-all duration-150 ${tileClass(t)} ${allDefault ? 'border-2 shadow-md shadow-zinc-700/30' : 'border'}`}
+            className={`h-12 w-12 rounded-lg text-lg font-bold transition-all duration-150 active:scale-95 ${tileClass(t)} ${allDefault ? 'border-2 shadow-md shadow-zinc-700/30' : 'border'}`}
             aria-label={`Tile ${i + 1}: ${t === 'B' ? 'gray' : t === 'Y' ? 'yellow' : 'green'}`}
           >
             {guess[i]?.toUpperCase() ?? ''}
