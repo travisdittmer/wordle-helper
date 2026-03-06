@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Wordle Helper',
-  description: 'Mobile-first Wordle solver with probe words and entropy scoring.',
+  description: 'Solve Wordle faster. Get the best guess instantly, every day.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

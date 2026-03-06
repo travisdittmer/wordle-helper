@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Wordle Helper',
     short_name: 'WordleHelper',
-    description: 'Mobile-first Wordle solver with probe words and entropy scoring.',
+    description: 'Solve Wordle faster. Get the best guess instantly, every day.',
     start_url: '/',
     display: 'standalone',
     background_color: '#000000',
