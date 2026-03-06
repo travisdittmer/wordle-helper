@@ -332,9 +332,11 @@ export default function Home() {
           </button>
         </section>
 
+        {history.length > 0 && <div className="border-t border-zinc-800/30" />}
+
         {/* History */}
         {history.length > 0 && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
             <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
             <div className="mt-3">
               <GuessHistory history={history} />
@@ -344,7 +346,7 @@ export default function Home() {
 
         {/* Keyboard */}
         {history.length > 0 && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
             <h2 className="text-sm font-semibold text-zinc-400">Keyboard</h2>
             <div className="mt-3">
               <VisualKeyboard letterStates={letterStates} />
@@ -359,7 +361,7 @@ export default function Home() {
         </label>
 
         {showTop && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">Top guesses (entropy)</div>
               <div className="flex items-center gap-2 text-sm">

@@ -12,9 +12,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   // State: Solved (exactly 1 candidate)
   if (candidateCount === 1) {
     return (
-      <section className="rounded-xl border border-emerald-700/50 bg-emerald-950/30 p-5">
+      <section className="rounded-xl border border-emerald-700/50 bg-emerald-950/30 p-6">
         <div className="text-sm font-medium text-emerald-400">Solved!</div>
-        <div className="mt-1 font-mono text-3xl font-bold text-emerald-300 tracking-widest">
+        <div className="mt-1 font-mono text-4xl font-bold text-emerald-300 tracking-widest">
           {candidates[0].toUpperCase()}
         </div>
       </section>
@@ -24,7 +24,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   // State: Narrowed shortlist (2-25 candidates)
   if (candidateCount >= 2 && candidateCount <= 25) {
     return (
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-6">
         <div className="text-sm font-medium text-zinc-400">
           {candidateCount === 2 ? '50/50 \u2014 it\u2019s one of these:' :
            candidateCount <= 5 ? `Down to ${candidateCount} \u2014 should solve next guess:` :
@@ -59,7 +59,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   // State: No candidates
   if (candidateCount === 0) {
     return (
-      <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-5">
+      <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-6">
         <div className="text-sm font-medium text-red-400">No candidates remain</div>
         <div className="mt-1 text-xs text-red-400/70">Double-check your feedback tiles, or reset and try again.</div>
       </section>
@@ -68,7 +68,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
 
   // State: Many candidates — show recommended guess prominently
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+    <section className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6">
       {isComputing ? (
         <div>
           <div className="text-sm font-medium text-zinc-400">Finding best guess...</div>
@@ -79,7 +79,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
           <div className="text-sm font-medium text-zinc-400">
             {candidateCount > 50 ? 'Try this word next' : `${candidateCount} left \u2014 try this next`}
           </div>
-          <div className="mt-1 font-mono text-3xl font-bold tracking-widest text-white">
+          <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-white">
             {recommended.guess.toUpperCase()}
           </div>
         </div>
