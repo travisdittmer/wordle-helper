@@ -10,24 +10,13 @@ import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from
 import { frequencyWeights } from '@/lib/wordle/wordFrequency';
 import { seasonalBoosts } from '@/lib/wordle/seasonalBoost';
 import { FeedbackTiles } from '@/components/FeedbackTiles';
-
-function tileClassSmall(t: Tile): string {
-  switch (t) {
-    case 'G':
-      return 'bg-emerald-600 text-white';
-    case 'Y':
-      return 'bg-amber-500 text-white';
-    case 'B':
-    default:
-      return 'bg-zinc-300 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50';
-  }
-}
+import { GuessHistory } from '@/components/GuessHistory';
+import { VisualKeyboard } from '@/components/VisualKeyboard';
+import type { LetterState } from '@/components/VisualKeyboard';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
 }
-
-type LetterState = 'correct' | 'present' | 'absent' | 'unknown';
 
 /** Derive keyboard letter states from guess history. */
 function deriveLetterStates(history: Array<{ guess: string; pattern: Pattern }>): Map<string, LetterState> {
@@ -48,25 +37,6 @@ function deriveLetterStates(history: Array<{ guess: string; pattern: Pattern }>)
   }
   return states;
 }
-
-function keyClass(state: LetterState): string {
-  switch (state) {
-    case 'correct':
-      return 'bg-emerald-600 border-emerald-700 text-white';
-    case 'present':
-      return 'bg-amber-500 border-amber-600 text-white';
-    case 'absent':
-      return 'bg-zinc-400 border-zinc-500 text-zinc-100 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-500';
-    default:
-      return 'bg-zinc-200 border-zinc-300 text-zinc-900 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-50';
-  }
-}
-
-const KEYBOARD_ROWS = [
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
-];
 
 // Past answer weight is always 0 (Wordle never reuses answers).
 const PAST_ANSWER_WEIGHT = 0;
@@ -448,25 +418,9 @@ export default function Home() {
             </label>
           </div>
 
-          {history.length === 0 ? (
-            <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No guesses yet.</div>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {history.map((h, idx) => (
-                <li key={idx} className="flex items-center gap-1.5">
-                  {h.guess.split('').map((ch, ci) => (
-                    <div
-                      key={ci}
-                      className={`flex h-9 w-9 items-center justify-center rounded font-mono text-sm font-bold ${tileClassSmall(h.pattern[ci] as Tile)}`}
-                    >
-                      {ch.toUpperCase()}
-                    </div>
-                  ))}
-                  <span className="ml-2 text-xs text-zinc-400">{idx + 1}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mt-3">
+            <GuessHistory history={history} />
+          </div>
 
           {showTop && (
             <div className="mt-4">
@@ -511,22 +465,8 @@ export default function Home() {
         {history.length > 0 && (
           <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 className="text-sm font-semibold">Keyboard</h2>
-            <div className="mt-3 flex flex-col items-center gap-1.5">
-              {KEYBOARD_ROWS.map((row, ri) => (
-                <div key={ri} className="flex gap-1">
-                  {row.map((key) => {
-                    const state = letterStates.get(key) ?? 'unknown';
-                    return (
-                      <div
-                        key={key}
-                        className={`flex h-9 w-8 items-center justify-center rounded border text-xs font-bold uppercase ${keyClass(state)}`}
-                      >
-                        {key}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+            <div className="mt-3">
+              <VisualKeyboard letterStates={letterStates} />
             </div>
           </section>
         )}
