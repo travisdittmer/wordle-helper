@@ -28,6 +28,8 @@ interface FeedbackTilesProps {
 }
 
 export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProps) {
+  const allDefault = tiles.every((t) => t === 'B');
+
   return (
     <div>
       <div className="flex gap-2">
@@ -35,7 +37,7 @@ export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProp
           <button
             key={i}
             onClick={() => onTilesChange(tiles.map((x, j) => (j === i ? nextTile(x) : x)))}
-            className={`h-12 w-12 rounded-lg border text-lg font-bold transition-colors duration-150 ${tileClass(t)}`}
+            className={`h-12 w-12 rounded-lg text-lg font-bold transition-all duration-150 ${tileClass(t)} ${allDefault ? 'border-2 shadow-md shadow-zinc-700/30' : 'border'}`}
             aria-label={`Tile ${i + 1}: ${t === 'B' ? 'gray' : t === 'Y' ? 'yellow' : 'green'}`}
           >
             {guess[i]?.toUpperCase() ?? ''}
@@ -43,7 +45,9 @@ export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProp
         ))}
       </div>
       <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        Tap tiles to cycle: gray → yellow → green
+        {allDefault
+          ? 'Tap each tile to set the color Wordle showed you'
+          : 'Tap tiles to cycle: gray \u2192 yellow \u2192 green'}
       </div>
     </div>
   );
