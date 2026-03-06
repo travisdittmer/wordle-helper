@@ -271,6 +271,7 @@ export default function Home() {
           recommended={recommended}
           isComputing={isComputing}
           onSelectWord={(w) => setGuess(w)}
+          history={history}
         />
 
         {/* Feedback entry */}
