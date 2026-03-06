@@ -54,7 +54,8 @@ export default function Home() {
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isComputing, setIsComputing] = useState<boolean>(false);
-  const [lastComputeMs, setLastComputeMs] = useState<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_lastComputeMs, setLastComputeMs] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState<boolean>(false);
 
   // Undo stack: stores previous states so we can revert.
