@@ -23,7 +23,7 @@ export function ShareCard({ history, answer }: ShareCardProps) {
 
   const guessCount = history.length;
   const lines = history.map((h) => patternToEmoji(h.pattern));
-  const shareText = `Wordle Helper \u2192 ${answer.toUpperCase()} in ${guessCount}\n\n${lines.join('\n')}\n\nwordlehelper.app`;
+  const shareText = `Wordle Helper \u2192 Solved in ${guessCount}\n\n${lines.join('\n')}\n\nwordlehelper.app`;
 
   async function onCopy() {
     try {
