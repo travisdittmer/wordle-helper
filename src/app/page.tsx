@@ -9,25 +9,7 @@ import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
 import { frequencyWeights } from '@/lib/wordle/wordFrequency';
 import { seasonalBoosts } from '@/lib/wordle/seasonalBoost';
-
-const TILE_ORDER: Tile[] = ['B', 'Y', 'G'];
-
-function nextTile(t: Tile): Tile {
-  const idx = TILE_ORDER.indexOf(t);
-  return TILE_ORDER[(idx + 1) % TILE_ORDER.length];
-}
-
-function tileClass(t: Tile): string {
-  switch (t) {
-    case 'G':
-      return 'bg-emerald-600 border-emerald-700 text-white';
-    case 'Y':
-      return 'bg-amber-500 border-amber-600 text-white';
-    case 'B':
-    default:
-      return 'bg-zinc-300 border-zinc-400 text-zinc-900 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-50';
-  }
-}
+import { FeedbackTiles } from '@/components/FeedbackTiles';
 
 function tileClassSmall(t: Tile): string {
   switch (t) {
@@ -431,19 +413,9 @@ export default function Home() {
 
             <div className="mt-4">
               <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Enter Wordle feedback</div>
-              <div className="mt-2 flex gap-2">
-                {tiles.map((t, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setTiles((prev) => prev.map((x, j) => (j === i ? nextTile(x) : x)))}
-                    className={`h-12 w-12 rounded-lg border text-lg font-bold ${tileClass(t)}`}
-                    aria-label={`Tile ${i + 1}: ${t}`}
-                  >
-                    {guess[i]?.toUpperCase() ?? ''}
-                  </button>
-                ))}
+              <div className="mt-2">
+                <FeedbackTiles tiles={tiles} guess={guess} onTilesChange={setTiles} />
               </div>
-              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Tap tiles to cycle: gray → yellow → green</div>
             </div>
 
             {error && <div className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
