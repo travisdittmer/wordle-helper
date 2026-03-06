@@ -1,6 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Pattern } from '@/lib/wordle/feedback';
+import { ShareCard } from './ShareCard';
 
 interface AnswerZoneProps {
   candidateCount: number;
@@ -8,9 +10,10 @@ interface AnswerZoneProps {
   recommended: { guess: string; score: number } | null;
   isComputing: boolean;
   onSelectWord: (word: string) => void;
+  history: Array<{ guess: string; pattern: Pattern }>;
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord }: AnswerZoneProps) {
+export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history }: AnswerZoneProps) {
   const stateKey = candidateCount === 1 ? 'solved' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
@@ -23,9 +26,15 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
     content = (
       <>
         <div className="text-sm font-medium text-emerald-400">Solved!</div>
-        <div className="mt-1 font-mono text-4xl font-bold text-emerald-300 tracking-widest">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className="mt-1 font-mono text-4xl font-bold text-emerald-300 tracking-widest"
+        >
           {candidates[0].toUpperCase()}
-        </div>
+        </motion.div>
+        <ShareCard history={history} answer={candidates[0]} />
       </>
     );
   } else if (candidateCount >= 2 && candidateCount <= 25) {
@@ -38,14 +47,17 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
            `${candidateCount} possible answers:`}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {candidates.map((w) => (
-            <button
+          {candidates.map((w, i) => (
+            <motion.button
               key={w}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.04, duration: 0.15 }}
               onClick={() => onSelectWord(w)}
               className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 font-mono text-sm font-semibold tracking-wide text-zinc-100 transition-colors hover:border-zinc-500 hover:bg-zinc-800"
             >
               {w.toUpperCase()}
-            </button>
+            </motion.button>
           ))}
         </div>
         {recommended && (
