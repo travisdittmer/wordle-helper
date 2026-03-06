@@ -15,6 +15,7 @@ import { InfoModal } from '@/components/InfoModal';
 import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
 import { AnswerZone } from '@/components/AnswerZone';
+import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
@@ -247,6 +248,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
       <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
+        <OnboardingOverlay />
         {/* Slim header */}
         <header className="flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
@@ -273,6 +275,20 @@ export default function Home() {
 
         {/* Feedback entry */}
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          {recommended && guess === recommended.guess && (
+            <div className="mb-2 text-[11px] text-zinc-500">solver suggestion loaded</div>
+          )}
+          {recommended && guess !== recommended.guess && guess.length === 5 && (
+            <div className="mb-2 flex items-center gap-2 text-[11px] text-zinc-500">
+              <span>custom guess</span>
+              <button
+                onClick={() => setGuess(recommended.guess)}
+                className="text-zinc-300 underline-offset-2 hover:underline"
+              >
+                use suggestion
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <input
               value={guess}
