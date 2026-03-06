@@ -43,7 +43,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         </div>
         {recommended && (
           <div className="mt-3 text-xs text-zinc-500">
-            Best information guess:{' '}
+            Best strategic guess:{' '}
             <button
               onClick={() => onSelectWord(recommended.guess)}
               className="font-mono text-zinc-300 underline-offset-2 hover:underline"
@@ -60,7 +60,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   if (candidateCount === 0) {
     return (
       <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-6">
-        <div className="text-sm font-medium text-red-400">No candidates remain</div>
+        <div className="text-sm font-medium text-red-400">No possible answers remain</div>
         <div className="mt-1 text-xs text-red-400/70">Double-check your feedback tiles, or reset and try again.</div>
       </section>
     );

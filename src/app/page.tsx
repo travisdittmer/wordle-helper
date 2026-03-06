@@ -210,7 +210,7 @@ export default function Home() {
     if (warning) setDataWarning(warning);
 
     if (next.length === 0) {
-      return setError('No candidates remain. Double-check your feedback tiles for this guess.');
+      return setError('No possible answers remain. Double-check your feedback tiles for this guess.');
     }
 
     // Push current state to undo stack before applying.
@@ -363,7 +363,7 @@ export default function Home() {
         {showTop && (
           <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Top guesses (entropy)</div>
+              <div className="text-sm font-semibold">Top guesses (score)</div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-zinc-500 dark:text-zinc-400">N</span>
                 <input
@@ -392,7 +392,7 @@ export default function Home() {
             </ul>
             {candidates.length > 200 && (
               <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Note: for speed on mobile, top-guess search is capped to the first 4,000 allowed guesses until the candidate list shrinks.
+                Showing a subset of guesses for speed. Full search available when fewer words remain.
               </div>
             )}
           </section>
