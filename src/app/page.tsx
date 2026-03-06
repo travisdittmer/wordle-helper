@@ -14,6 +14,7 @@ import { GuessHistory } from '@/components/GuessHistory';
 import { InfoModal } from '@/components/InfoModal';
 import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
+import { AnswerZone } from '@/components/AnswerZone';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
@@ -184,18 +185,6 @@ export default function Home() {
     return weights.filter((x) => x > 0).length;
   }, [weights]);
 
-  // Confidence indicator: describe how close we are to solving.
-  const confidenceText = useMemo(() => {
-    const n = remainingCandidatesDisplay;
-    if (n === 0) return null;
-    if (n === 1) return 'Solved!';
-    if (n === 2) return '2 left — 50/50 shot';
-    if (n <= 5) return `${n} left — should solve next guess`;
-    if (n <= 15) return `${n} left — likely 1-2 more guesses`;
-    if (n <= 50) return `${n} left — 2-3 guesses to go`;
-    return null;
-  }, [remainingCandidatesDisplay]);
-
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
@@ -257,197 +246,142 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8">
-        <header className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Wordle Helper</h1>
-            <button
-              onClick={() => setShowInfo(true)}
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              aria-label="How does this work?"
-              title="How does this work?"
-            >
-              i
-            </button>
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Entropy solver with two-step lookahead and frequency priors.
-          </p>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-500">
-            Wordlist: {new Date(WORDLIST_META.generatedAt).toLocaleDateString()} — {WORDLIST_META.possibleWordsCount} possible answers
-          </p>
+      <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
+        {/* Slim header */}
+        <header className="flex items-center justify-between">
+          <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
+          <button
+            onClick={() => setShowInfo(true)}
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            aria-label="How does this work?"
+            title="How does this work?"
+          >
+            i
+          </button>
         </header>
 
         {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
+        {/* Answer Zone — always visible, adapts to state */}
+        <AnswerZone
+          candidateCount={remainingCandidatesDisplay}
+          candidates={candidates}
+          recommended={recommended}
+          isComputing={isComputing}
+          onSelectWord={(w) => setGuess(w)}
+        />
+
+        {/* Feedback entry */}
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex items-baseline justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Remaining candidates</div>
-              <div className="flex items-baseline gap-3">
-                <div className="text-2xl font-semibold">{remainingCandidatesDisplay.toLocaleString()}</div>
-                {confidenceText && remainingCandidatesDisplay > 1 && (
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">{confidenceText}</div>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {history.length > 0 && (
-                <button
-                  onClick={onUndo}
-                  className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                  title="Undo last guess"
-                >
-                  Undo
-                </button>
-              )}
-              <button
-                onClick={onReset}
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Recommended guess</div>
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                value={guess}
-                onChange={(e) => setGuess(e.target.value)}
-                inputMode="text"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                className="w-36 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-lg font-semibold tracking-widest lowercase outline-none focus:border-zinc-500 dark:border-zinc-700"
-                maxLength={5}
-              />
-              {recommended && (
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                  entropy: {Number.isFinite(recommended.score) ? recommended.score.toFixed(3) : '—'}
-                  {lastComputeMs != null ? ` • ${Math.round(lastComputeMs)}ms` : ''}
-                </div>
-              )}
-              {isComputing && <div className="text-xs text-zinc-500 dark:text-zinc-400">computing…</div>}
-            </div>
-
-            <div className="mt-4">
-              <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Enter Wordle feedback</div>
-              <div className="mt-2">
-                <FeedbackTiles tiles={tiles} guess={guess} onTilesChange={setTiles} />
-              </div>
-            </div>
-
-            {error && <div className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
-            {dataWarning && <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">{dataWarning}</div>}
-
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={onApplyFeedback}
-                className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-              >
-                Apply feedback
-              </button>
+          <div className="flex items-center gap-3">
+            <input
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="guess"
+              className="w-36 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-lg font-semibold tracking-widest lowercase outline-none focus:border-zinc-500 dark:border-zinc-700 dark:placeholder:text-zinc-600"
+              maxLength={5}
+            />
+            <div className="flex gap-3 text-xs">
               <button
                 onClick={() => setTiles(['B', 'B', 'B', 'B', 'B'])}
-                className="rounded-lg border border-zinc-300 px-4 py-3 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                className="text-zinc-500 hover:text-zinc-300 underline-offset-2 hover:underline"
               >
-                Clear
+                clear tiles
               </button>
+              {history.length > 0 && (
+                <>
+                  <button onClick={onUndo} className="text-zinc-500 hover:text-zinc-300 underline-offset-2 hover:underline">undo</button>
+                  <button onClick={onReset} className="text-zinc-500 hover:text-zinc-300 underline-offset-2 hover:underline">reset</button>
+                </>
+              )}
             </div>
-          </div>
-        </section>
-
-        {/* Colored tile history */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">History</h2>
-            <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <input type="checkbox" checked={showTop} onChange={(e) => setShowTop(e.target.checked)} />
-              show top guesses
-            </label>
           </div>
 
           <div className="mt-3">
-            <GuessHistory history={history} />
+            <FeedbackTiles tiles={tiles} guess={guess} onTilesChange={setTiles} />
           </div>
 
-          {showTop && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Top guesses (entropy)</div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-zinc-500 dark:text-zinc-400">N</span>
-                  <input
-                    type="number"
-                    value={topN}
-                    onChange={(e) => setTopN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
-                    className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
-                    min={1}
-                    max={50}
-                  />
-                </div>
-              </div>
-              <ul className="mt-2 space-y-2">
-                {topGuessesList.map((x) => (
-                  <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                    <button
-                      className="font-mono text-sm underline-offset-2 hover:underline"
-                      onClick={() => setGuess(x.guess)}
-                      title="Use this guess"
-                    >
-                      {x.guess.toUpperCase()}
-                    </button>
-                    <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
-                  </li>
-                ))}
-              </ul>
-              {candidates.length > 200 && (
-                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  Note: for speed on mobile, top-guess search is capped to the first 4,000 allowed guesses until the candidate list shrinks.
-                </div>
-              )}
-            </div>
-          )}
+          {error && <div className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</div>}
+          {dataWarning && <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">{dataWarning}</div>}
+
+          <button
+            onClick={onApplyFeedback}
+            className="mt-4 w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+          >
+            Apply feedback
+          </button>
         </section>
 
-        {/* Visual keyboard */}
+        {/* History */}
         {history.length > 0 && (
           <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold">Keyboard</h2>
+            <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
+            <div className="mt-3">
+              <GuessHistory history={history} />
+            </div>
+          </section>
+        )}
+
+        {/* Keyboard */}
+        {history.length > 0 && (
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <h2 className="text-sm font-semibold text-zinc-400">Keyboard</h2>
             <div className="mt-3">
               <VisualKeyboard letterStates={letterStates} />
             </div>
           </section>
         )}
 
-        {candidates.length <= 25 && candidates.length > 1 && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold">Remaining candidates</h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {candidates.map((w) => (
-                <button
-                  key={w}
-                  onClick={() => setGuess(w)}
-                  className="rounded-md border border-zinc-200 px-2 py-1 font-mono text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                >
-                  {w.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Top guesses explorer */}
+        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input type="checkbox" checked={showTop} onChange={(e) => setShowTop(e.target.checked)} />
+          show top guesses
+        </label>
 
-        {candidates.length === 1 && (
-          <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
-            <div className="text-sm font-semibold">Solved</div>
-            <div className="mt-1 font-mono text-2xl font-bold">{candidates[0].toUpperCase()}</div>
+        {showTop && (
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold">Top guesses (entropy)</div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-zinc-500 dark:text-zinc-400">N</span>
+                <input
+                  type="number"
+                  value={topN}
+                  onChange={(e) => setTopN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
+                  className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+                  min={1}
+                  max={50}
+                />
+              </div>
+            </div>
+            <ul className="mt-2 space-y-2">
+              {topGuessesList.map((x) => (
+                <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                  <button
+                    className="font-mono text-sm underline-offset-2 hover:underline"
+                    onClick={() => setGuess(x.guess)}
+                    title="Use this guess"
+                  >
+                    {x.guess.toUpperCase()}
+                  </button>
+                  <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
+                </li>
+              ))}
+            </ul>
+            {candidates.length > 200 && (
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                Note: for speed on mobile, top-guess search is capped to the first 4,000 allowed guesses until the candidate list shrinks.
+              </div>
+            )}
           </section>
         )}
 
         <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-          Tip: if Wordle rejects a probe word, just type a different one — this solver uses a broad allowed list.
+          {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
         </footer>
       </main>
     </div>
