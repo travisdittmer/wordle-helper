@@ -183,9 +183,11 @@ export default function Home() {
     });
   }, [candidates]);
 
-  const remainingCandidatesDisplay = useMemo(() => {
-    return weights.filter((x) => x > 0).length;
-  }, [weights]);
+  const activeCandidates = useMemo(() => {
+    return candidates.filter((_, i) => weights[i] > 0);
+  }, [candidates, weights]);
+
+  const remainingCandidatesDisplay = activeCandidates.length;
 
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
@@ -268,7 +270,7 @@ export default function Home() {
         {/* Answer Zone — always visible, adapts to state */}
         <AnswerZone
           candidateCount={remainingCandidatesDisplay}
-          candidates={candidates}
+          candidates={activeCandidates}
           recommended={recommended}
           isComputing={isComputing}
           onSelectWord={(w) => setGuess(w)}
