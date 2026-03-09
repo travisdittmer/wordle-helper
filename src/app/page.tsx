@@ -81,7 +81,13 @@ export default function Home() {
     const w = workerRef.current;
     if (!w) return;
 
-    if (nextCandidates.length === 0) {
+    // Filter out past answers so the solver operates on the same set
+    // the UI displays. Past answers remain available as probing guesses
+    // via allowedGuesses in the solver worker.
+    const past = knownPastAnswers(new Date());
+    const active = nextCandidates.filter(c => !past.has(c));
+
+    if (active.length === 0) {
       setIsComputing(false);
       setLastComputeMs(null);
       setRecommended(null);
@@ -89,10 +95,10 @@ export default function Home() {
     }
 
     const requestId = ++requestIdRef.current;
-    latestRequestedCandidateCountRef.current = nextCandidates.length;
+    latestRequestedCandidateCountRef.current = active.length;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates, pastAnswerWeight: PAST_ANSWER_WEIGHT });
+    w.postMessage({ type: 'compute', requestId, candidates: active, pastAnswerWeight: PAST_ANSWER_WEIGHT });
   }, []);
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
@@ -209,11 +215,18 @@ export default function Home() {
     const nextCanonical = filterCandidatesByFeedback({ candidates, guess: g, pattern });
     const nextBroad = filterCandidatesByFeedback({ candidates: broadCandidates, guess: g, pattern });
 
-    const { next, warning } = chooseCandidateSet(nextCanonical, nextBroad);
+    const past = knownPastAnswers(new Date());
+    const { next, warning } = chooseCandidateSet(nextCanonical, nextBroad, past);
     if (warning) setDataWarning(warning);
 
     if (next.length === 0) {
       return setError('No possible answers remain. Double-check your feedback tiles for this guess.');
+    }
+
+    // Check if all remaining candidates are past answers — likely wrong feedback
+    const activeNext = next.filter(w => !past.has(w));
+    if (activeNext.length === 0) {
+      return setError('No possible answers remain — only past Wordle answers match. Double-check your feedback tiles.');
     }
 
     // Push current state to undo stack before applying.

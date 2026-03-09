@@ -31,3 +31,40 @@ test('chooseCandidateSet falls back to broad list for stale canonical list (POOC
   assert.deepEqual(res3.next, ['mooch', 'pooch']);
   assert.equal(res3.warning, null);
 });
+
+// --- Bug fix: past-answer awareness ---
+
+test('chooseCandidateSet falls back to broad when all canonical candidates are past answers', () => {
+  const pastAnswers = new Set(['jolly', 'golly']);
+
+  // Canonical has 2 words but both are past answers; broad has non-past words
+  const res = chooseCandidateSet(['jolly', 'golly'], ['jolly', 'golly', 'molly', 'polly'], pastAnswers);
+  assert.deepEqual(res.next, ['jolly', 'golly', 'molly', 'polly']);
+  assert.ok(res.warning);
+  assert.ok(res.warning!.includes('past'));
+});
+
+test('chooseCandidateSet returns canonical when it has active (non-past) candidates', () => {
+  const pastAnswers = new Set(['jolly']);
+
+  // Canonical has jolly (past) + molly (active) — should NOT fall back
+  const res = chooseCandidateSet(['jolly', 'molly'], ['jolly', 'molly', 'polly'], pastAnswers);
+  assert.deepEqual(res.next, ['jolly', 'molly']);
+  assert.equal(res.warning, null);
+});
+
+test('chooseCandidateSet without pastAnswers preserves existing behavior', () => {
+  // No pastAnswers arg = same as before
+  const res = chooseCandidateSet(['jolly', 'golly'], ['jolly', 'golly', 'molly']);
+  assert.deepEqual(res.next, ['jolly', 'golly']);
+  assert.equal(res.warning, null);
+});
+
+test('chooseCandidateSet falls back when all canonical AND broad are past answers', () => {
+  const pastAnswers = new Set(['jolly', 'golly']);
+
+  // Both canonical and broad are all past answers — falls back to broad (let caller handle the 0-active case)
+  const res = chooseCandidateSet(['jolly'], ['jolly', 'golly'], pastAnswers);
+  assert.deepEqual(res.next, ['jolly', 'golly']);
+  assert.ok(res.warning);
+});
