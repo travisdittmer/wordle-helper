@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test` — run all tests (`tsx --test src/**/*.test.ts`)
 - `npm run sync:wordlists` — regenerate `src/lib/wordlists.ts` from source data files
 - `npm run fetch:answers` — fetch confirmed answers from NYT API, update `answersByDate.ts`
+- `npm run benchmark` — full benchmark: play all historical games (~5-15 min)
+- `npm run benchmark:quick` — quick benchmark: skip lookahead (~1-2 min)
 
 ## Architecture
 
@@ -30,7 +32,7 @@ Next.js 16 app (App Router, single page) that helps solve daily Wordle puzzles u
 ### Candidate weighting
 
 Candidates are weighted by three multiplicative factors:
-- **Past-answer penalty** (`history.ts`) — Wordle never reuses answers; past answers get weight 0
+- **Past-answer weight** (`history.ts`) — NYT reuses past answers at ~11% rate (since Feb 2026); past answers get reduced weight (0.04 for used-once, 0.01 for used-twice) via `pastAnswerWeight(useCount)`
 - **Word frequency** (`wordFrequency.ts`) — bigram/unigram scoring as a commonality proxy, maps to [0.2, 1.0]
 - **Seasonal boosts** (`seasonalBoost.ts`) — small multiplier for thematically relevant words by month/date
 
@@ -44,13 +46,28 @@ Candidates are weighted by three multiplicative factors:
 
 ### Answer history
 
-`src/lib/wordle/answersByDate.ts` is **auto-generated** by `scripts/fetch-answers.mjs`. Do not edit it directly. Contains the ordered list of all confirmed past Wordle answers (index 0 = 2021-06-19, "cigar"), fetched from the NYT API. `history.ts` uses this to compute which words are past answers based on a 5:00 AM UTC rollover.
+`src/lib/wordle/answersByDate.ts` is **auto-generated** by `scripts/fetch-answers.mjs`. Do not edit it directly. Contains the ordered list of all confirmed past Wordle answers (index 0 = 2021-06-19, "cigar"), fetched from the NYT API. `history.ts` uses this to compute past-answer use counts and weights based on a 5:00 AM UTC rollover.
+
+**Data integrity**: The answer list MUST be API-verified. The original Wordle source code contained a pre-determined answer list that diverges from what NYT actually uses (NYT swaps planned words and reuses old ones). To re-verify the full list, clear `src/data/answers_by_date_wordlist.txt` then run `npm run fetch:answers`. The list may contain duplicate entries — this is correct, as NYT reuses past answers (~11% rate since Feb 2026).
 
 A daily GitHub Action (`.github/workflows/update-answers.yml`) runs `fetch:answers` + `sync:wordlists` at 5:30 AM UTC and auto-commits new answers. The fetch script is idempotent — it reuses existing entries and only fetches dates not yet in the local list.
 
 ### UI
 
 Single-page client component (`src/app/page.tsx`). Tailwind CSS v4 for styling. Features: tile-tap feedback entry, undo/reset, guess history with colored tiles, visual keyboard, top-N guess explorer, confidence indicator.
+
+### Benchmark
+
+CLI harness (`scripts/benchmark.ts`) plays all historical Wordle games using the solver and measures performance. Weight configs in `benchmark/configs/` define tunable parameters. Results are written to `benchmark/results/` (gitignored). Dashboard at `benchmark/dashboard.html` visualizes results.
+
+Key files:
+- `scripts/benchmark.ts` — CLI entry point
+- `scripts/benchmark-engine.ts` — core game simulation loop
+- `scripts/benchmark-stats.ts` — summary statistics calculator
+- `scripts/benchmark-types.ts` — shared TypeScript types
+- `benchmark/configs/` — weight config JSON files
+- `benchmark/results/` — output result JSON files (gitignored)
+- `benchmark/dashboard.html` — standalone visualization dashboard
 
 ### Path alias
 

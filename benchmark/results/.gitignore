@@ -1,0 +1,3 @@
+# Benchmark result files are local — not committed
+*
+!.gitignore
