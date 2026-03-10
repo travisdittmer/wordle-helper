@@ -1,0 +1,9 @@
+{
+  "name": "baseline-v1",
+  "pastAnswer": {
+    "usedOnce": 0.04,
+    "usedTwice": 0.01
+  },
+  "frequencyWeightRange": [0.2, 1.0],
+  "seasonalBoostEnabled": true
+}
