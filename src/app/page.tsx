@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
-import { initialCandidates, knownPastAnswers, todayKey } from '@/lib/wordle/history';
+import { initialCandidates, knownPastAnswers, pastAnswerCounts, pastAnswerWeight, todayKey } from '@/lib/wordle/history';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
-import { frequencyWeights } from '@/lib/wordle/wordFrequency';
-import { seasonalBoosts } from '@/lib/wordle/seasonalBoost';
 import { FeedbackTiles } from '@/components/FeedbackTiles';
 import { GuessHistory } from '@/components/GuessHistory';
 import { InfoModal } from '@/components/InfoModal';
@@ -19,6 +17,66 @@ import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
+}
+
+/**
+ * Detect contradictions between accumulated feedback and a new guess+pattern.
+ * Returns a warning string if a contradiction is found, null otherwise.
+ *
+ * Contradictions detected:
+ * - A letter was Yellow/Green in a prior guess (confirmed present) but is now Black
+ *   in the new guess with no duplicate-letter explanation.
+ */
+function detectFeedbackContradiction(
+  history: Array<{ guess: string; pattern: Pattern }>,
+  newGuess: string,
+  newPattern: Pattern,
+): string | null {
+  // Build knowledge from prior guesses: minimum letter counts confirmed present.
+  const minCounts = new Map<string, number>();
+  for (const { guess, pattern } of history) {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 5; i++) {
+      const tile = pattern[i] as Tile;
+      if (tile === 'G' || tile === 'Y') {
+        const ch = guess[i];
+        counts.set(ch, (counts.get(ch) ?? 0) + 1);
+      }
+    }
+    for (const [ch, n] of counts) {
+      minCounts.set(ch, Math.max(minCounts.get(ch) ?? 0, n));
+    }
+  }
+
+  // Check the new guess for contradictions.
+  // Count how many of each letter are Yellow/Green vs Black in the new guess.
+  const newPresent = new Map<string, number>();
+  const newAbsent = new Map<string, number>();
+  for (let i = 0; i < 5; i++) {
+    const ch = newGuess[i];
+    const tile = newPattern[i] as Tile;
+    if (tile === 'G' || tile === 'Y') {
+      newPresent.set(ch, (newPresent.get(ch) ?? 0) + 1);
+    } else {
+      newAbsent.set(ch, (newAbsent.get(ch) ?? 0) + 1);
+    }
+  }
+
+  // A Black tile for letter X means the answer has at most (presentCount) copies of X.
+  // If prior guesses established more copies exist, that's a contradiction.
+  for (const [ch, absentCount] of newAbsent) {
+    if (absentCount === 0) continue;
+    const priorMin = minCounts.get(ch) ?? 0;
+    if (priorMin === 0) continue;
+    const currentPresent = newPresent.get(ch) ?? 0;
+    // The new feedback implies the answer has exactly `currentPresent` copies of ch.
+    // But prior feedback established at least `priorMin` copies.
+    if (currentPresent < priorMin) {
+      return `Possible contradiction: "${ch.toUpperCase()}" was confirmed present in a prior guess but is marked gray here. Double-check your tiles.`;
+    }
+  }
+
+  return null;
 }
 
 /** Derive keyboard letter states from guess history. */
@@ -40,9 +98,6 @@ function deriveLetterStates(history: Array<{ guess: string; pattern: Pattern }>)
   }
   return states;
 }
-
-// Past answer weight is always 0 (Wordle never reuses answers).
-const PAST_ANSWER_WEIGHT = 0;
 
 export default function Home() {
   const [candidates, setCandidates] = useState<string[]>(() => initialCandidates(POSSIBLE_WORDS));
@@ -81,24 +136,21 @@ export default function Home() {
     const w = workerRef.current;
     if (!w) return;
 
-    // Filter out past answers so the solver operates on the same set
-    // the UI displays. Past answers remain available as probing guesses
-    // via allowedGuesses in the solver worker.
-    const past = knownPastAnswers(new Date());
-    const active = nextCandidates.filter(c => !past.has(c));
-
-    if (active.length === 0) {
+    if (nextCandidates.length === 0) {
       setIsComputing(false);
       setLastComputeMs(null);
       setRecommended(null);
       return;
     }
 
+    // Send all candidates (including past answers) to the worker.
+    // The worker applies PAST_ANSWER_WEIGHT to deprioritize them
+    // without fully excluding them, since NYT now reuses past answers.
     const requestId = ++requestIdRef.current;
-    latestRequestedCandidateCountRef.current = active.length;
+    latestRequestedCandidateCountRef.current = nextCandidates.length;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', requestId, candidates: active, pastAnswerWeight: PAST_ANSWER_WEIGHT });
+    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates });
   }, []);
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
@@ -180,12 +232,10 @@ export default function Home() {
   }, [tiles]);
 
   const weights = useMemo(() => {
-    const past = knownPastAnswers(new Date());
-    const freqW = frequencyWeights(candidates);
-    const seasonal = seasonalBoosts(candidates);
-    return candidates.map((x, i) => {
-      const pastFactor = past.has(x) ? PAST_ANSWER_WEIGHT : 1;
-      return pastFactor * freqW[i] * seasonal[i];
+    const counts = pastAnswerCounts(new Date());
+    // Past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
+    return candidates.map((x) => {
+      return pastAnswerWeight(counts.get(x) ?? 0);
     });
   }, [candidates]);
 
@@ -212,6 +262,10 @@ export default function Home() {
     if (!allowedGuessSet.has(g)) return setError('Not in allowed guess list.');
     if (!pattern) return setError('Feedback pattern must be 5 tiles.');
 
+    // Warn about feedback contradictions before filtering.
+    const contradiction = detectFeedbackContradiction(history, g, pattern);
+    if (contradiction) setDataWarning(contradiction);
+
     const nextCanonical = filterCandidatesByFeedback({ candidates, guess: g, pattern });
     const nextBroad = filterCandidatesByFeedback({ candidates: broadCandidates, guess: g, pattern });
 
@@ -223,10 +277,10 @@ export default function Home() {
       return setError('No possible answers remain. Double-check your feedback tiles for this guess.');
     }
 
-    // Check if all remaining candidates are past answers — likely wrong feedback
+    // Check if all remaining candidates are past answers — possibly a reused answer
     const activeNext = next.filter(w => !past.has(w));
     if (activeNext.length === 0) {
-      return setError('No possible answers remain — only past Wordle answers match. Double-check your feedback tiles.');
+      setDataWarning('All remaining candidates are past Wordle answers — the answer may be a reuse. Double-check your feedback tiles if this seems wrong.');
     }
 
     // Push current state to undo stack before applying.

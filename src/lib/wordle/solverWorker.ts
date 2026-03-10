@@ -1,11 +1,9 @@
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
-import { knownPastAnswers } from './history';
-import { seasonalBoosts } from './seasonalBoost';
+import { pastAnswerCounts, pastAnswerWeight } from './history';
 import { bestNextGuessHeuristic } from './solver_fast';
-import { frequencyWeights } from './wordFrequency';
 
 export type WorkerRequest =
-  | { type: 'compute'; requestId: number; candidates: string[]; pastAnswerWeight?: number }
+  | { type: 'compute'; requestId: number; candidates: string[] }
   | { type: 'ping' };
 
 export type WorkerResponse =
@@ -26,15 +24,11 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   const t0 = performance.now();
 
   try {
-    const pastWeight = Math.max(0, Math.min(1, msg.pastAnswerWeight ?? 0));
-    const past = knownPastAnswers(new Date());
+    const counts = pastAnswerCounts(new Date());
 
-    // Combine past-answer penalty, word frequency prior, and seasonal boosts.
-    const freqWeights = frequencyWeights(msg.candidates);
-    const seasonal = seasonalBoosts(msg.candidates);
-    const weights = msg.candidates.map((w, i) => {
-      const pastFactor = past.has(w) ? pastWeight : 1;
-      return pastFactor * freqWeights[i] * seasonal[i];
+    // Past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
+    const weights = msg.candidates.map((w) => {
+      return pastAnswerWeight(counts.get(w) ?? 0);
     });
 
     const { guess, score } = bestNextGuessHeuristic({
