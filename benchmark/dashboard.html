@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wordle Solver Benchmark Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #121213; color: #d7dadc; font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; }
+  h1 { text-align: center; font-size: 1.6rem; margin-bottom: 16px; letter-spacing: 0.05em; }
+  .file-loader { text-align: center; margin-bottom: 20px; }
+  .file-loader label {
+    display: inline-block; padding: 10px 24px; background: #538d4e; color: #fff;
+    border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s;
+  }
+  .file-loader label:hover { background: #6aaf5e; }
+  .file-loader input { display: none; }
+  .file-loader .loaded { margin-top: 8px; font-size: 0.85rem; color: #818384; }
+  .tabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 20px; }
+  .tab-btn {
+    padding: 8px 20px; background: #1a1a1b; border: 1px solid #3a3a3c; border-radius: 6px;
+    color: #818384; cursor: pointer; font-size: 0.9rem; transition: all 0.2s;
+  }
+  .tab-btn.active { background: #538d4e; color: #fff; border-color: #538d4e; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .card {
+    background: #1a1a1b; border-radius: 8px; padding: 20px; margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 12px; color: #538d4e; }
+  select {
+    background: #2a2a2b; color: #d7dadc; border: 1px solid #3a3a3c; border-radius: 4px;
+    padding: 6px 12px; font-size: 0.9rem; margin-bottom: 12px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #2a2a2b; }
+  th { color: #818384; font-weight: 600; }
+  .positive { color: #538d4e; }
+  .negative { color: #d94444; }
+  .chart-wrap { max-width: 600px; margin: 0 auto; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+  .config-display { font-size: 0.8rem; color: #818384; }
+  .config-display span { color: #b59f3b; }
+  .empty-msg { text-align: center; color: #818384; padding: 40px; }
+</style>
+</head>
+<body>
+<h1>WORDLE SOLVER BENCHMARK</h1>
+
+<div class="file-loader">
+  <label>Load Result Files <input type="file" id="fileInput" multiple accept=".json"></label>
+  <div class="loaded" id="loadedInfo">No files loaded</div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="summary">Run Summary</button>
+  <button class="tab-btn" data-tab="compare">Run Comparison</button>
+  <button class="tab-btn" data-tab="timeline">Evolution Timeline</button>
+</div>
+
+<div id="summary" class="tab-panel active">
+  <div class="card">
+    <select id="summarySelect"><option value="">Select a run...</option></select>
+    <div id="summaryContent" class="empty-msg">Load result files to begin</div>
+  </div>
+</div>
+
+<div id="compare" class="tab-panel">
+  <div class="card">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <label style="font-size:0.85rem">Run A: <select id="compareA"><option value="">--</option></select></label>
+      <label style="font-size:0.85rem">Run B: <select id="compareB"><option value="">--</option></select></label>
+    </div>
+    <div id="compareContent" class="empty-msg">Select two runs to compare</div>
+  </div>
+</div>
+
+<div id="timeline" class="tab-panel">
+  <div class="card">
+    <h2>Average Guesses Over Time</h2>
+    <div id="timelineContent" class="empty-msg">Load multiple runs to see trends</div>
+  </div>
+</div>
+
+<script>
+const runs = [];
+let summaryChart = null, compareChart = null, timelineChart = null;
+
+const GREEN = '#538d4e', YELLOW = '#b59f3b', RED = '#d94444', GREY = '#3a3a3c';
+const DIST_COLORS = [GREEN, GREEN, GREEN, YELLOW, YELLOW, RED, GREY];
+
+// --- File loading ---
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  for (const file of e.target.files) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.summary && data.config) runs.push(data);
+    } catch (_) { /* skip invalid */ }
+  }
+  document.getElementById('loadedInfo').textContent = `${runs.length} run(s) loaded`;
+  populateSelects();
+});
+
+function runLabel(r) {
+  const d = new Date(r.timestamp).toLocaleString();
+  return `${r.config.name} (${d})${r.quick ? ' [quick]' : ''}`;
+}
+
+function populateSelects() {
+  const opts = runs.map((r, i) => `<option value="${i}">${runLabel(r)}</option>`);
+  const blank = '<option value="">Select a run...</option>';
+  document.getElementById('summarySelect').innerHTML = blank + opts.join('');
+  document.getElementById('compareA').innerHTML = blank + opts.join('');
+  document.getElementById('compareB').innerHTML = blank + opts.join('');
+  if (runs.length >= 1) renderTimeline();
+}
+
+// --- Tabs ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// --- Tab 1: Run Summary ---
+document.getElementById('summarySelect').addEventListener('change', (e) => {
+  if (e.target.value === '') { document.getElementById('summaryContent').innerHTML = '<div class="empty-msg">Select a run</div>'; return; }
+  renderSummary(runs[+e.target.value]);
+});
+
+function renderSummary(r) {
+  const s = r.summary;
+  const el = document.getElementById('summaryContent');
+  el.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Stats</h2>
+        <table>
+          <tr><th>Solve Rate</th><td>${(s.solveRate * 100).toFixed(2)}%</td></tr>
+          <tr><th>Average Guesses</th><td>${s.averageGuesses.toFixed(3)}</td></tr>
+          <tr><th>Median Guesses</th><td>${s.medianGuesses}</td></tr>
+          <tr><th>Total Games</th><td>${s.totalGames}</td></tr>
+          <tr><th>Solved / Failed</th><td>${s.solved} / ${s.failed}</td></tr>
+          <tr><th>Duration</th><td>${(r.durationMs / 1000).toFixed(1)}s</td></tr>
+        </table>
+        <h2 style="color:${GREEN};margin:16px 0 8px">Config</h2>
+        <div class="config-display">
+          <div>Name: <span>${r.config.name}</span></div>
+          <div>Past answer (once): <span>${r.config.pastAnswer.usedOnce}</span></div>
+          <div>Past answer (twice): <span>${r.config.pastAnswer.usedTwice}</span></div>
+          <div>Freq weight range: <span>[${r.config.frequencyWeightRange.join(', ')}]</span></div>
+          <div>Seasonal boost: <span>${r.config.seasonalBoostEnabled}</span></div>
+        </div>
+      </div>
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Guess Distribution</h2>
+        <div class="chart-wrap"><canvas id="summaryChartCanvas"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:16px">
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Era Breakdown</h2>
+        <table>
+          <tr><th></th><th>Games</th><th>Avg Guesses</th><th>Solve Rate</th></tr>
+          <tr><td>Pre-reuse</td><td>${s.byEra.preReuse.games}</td><td>${s.byEra.preReuse.averageGuesses.toFixed(3)}</td><td>${(s.byEra.preReuse.solveRate * 100).toFixed(2)}%</td></tr>
+          <tr><td>Reuse era</td><td>${s.byEra.reuse.games}</td><td>${s.byEra.reuse.averageGuesses.toFixed(3)}</td><td>${(s.byEra.reuse.solveRate * 100).toFixed(2)}%</td></tr>
+        </table>
+      </div>
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Answer Type</h2>
+        <table>
+          <tr><th></th><th>Games</th><th>Avg Guesses</th></tr>
+          <tr><td>New word</td><td>${s.byAnswerType.newWord.games}</td><td>${s.byAnswerType.newWord.averageGuesses.toFixed(3)}</td></tr>
+          <tr><td>Reused answer</td><td>${s.byAnswerType.reusedAnswer.games}</td><td>${s.byAnswerType.reusedAnswer.averageGuesses.toFixed(3)}</td></tr>
+        </table>
+      </div>
+    </div>`;
+  if (summaryChart) summaryChart.destroy();
+  const labels = ['1','2','3','4','5','6','Fail'];
+  const data = [s.distribution[1],s.distribution[2],s.distribution[3],s.distribution[4],s.distribution[5],s.distribution[6],s.distribution.fail];
+  summaryChart = new Chart(document.getElementById('summaryChartCanvas'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: DIST_COLORS, borderRadius: 4 }] },
+    options: chartOpts('Games')
+  });
+}
+
+function chartOpts(yLabel) {
+  return {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#d7dadc' }, grid: { color: '#2a2a2b' } },
+      y: { ticks: { color: '#d7dadc' }, grid: { color: '#2a2a2b' }, title: { display: true, text: yLabel, color: '#818384' } }
+    }
+  };
+}
+
+// --- Tab 2: Run Comparison ---
+document.getElementById('compareA').addEventListener('change', tryCompare);
+document.getElementById('compareB').addEventListener('change', tryCompare);
+
+function tryCompare() {
+  const a = document.getElementById('compareA').value;
+  const b = document.getElementById('compareB').value;
+  if (a === '' || b === '') return;
+  renderCompare(runs[+a], runs[+b]);
+}
+
+function fmtDelta(val, flip) {
+  const sign = val > 0 ? '+' : '';
+  const cls = flip ? (val < 0 ? 'positive' : val > 0 ? 'negative' : '') : (val > 0 ? 'positive' : val < 0 ? 'negative' : '');
+  return `<span class="${cls}">${sign}${typeof val === 'number' && !Number.isInteger(val) ? val.toFixed(3) : val}</span>`;
+}
+
+function renderCompare(rA, rB) {
+  const a = rA.summary, b = rB.summary;
+  const el = document.getElementById('compareContent');
+  const dRate = b.solveRate - a.solveRate, dAvg = b.averageGuesses - a.averageGuesses, dMed = b.medianGuesses - a.medianGuesses;
+
+  // Find games that differ
+  const mapA = new Map(rA.games.map(g => [g.gameIndex, g]));
+  const changed = [];
+  for (const gB of rB.games) {
+    const gA = mapA.get(gB.gameIndex);
+    if (gA && gA.guessCount !== gB.guessCount) {
+      changed.push({ index: gB.gameIndex, answer: gB.answer, countA: gA.guessCount, countB: gB.guessCount,
+        solvedA: gA.solved, solvedB: gB.solved, delta: gB.guessCount - gA.guessCount });
+    }
+  }
+  changed.sort((x, y) => x.delta - y.delta);
+
+  el.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Delta Stats (B vs A)</h2>
+        <table>
+          <tr><th></th><th>Run A</th><th>Run B</th><th>Delta</th></tr>
+          <tr><td>Solve Rate</td><td>${(a.solveRate*100).toFixed(2)}%</td><td>${(b.solveRate*100).toFixed(2)}%</td><td>${fmtDelta(dRate*100, false)}%</td></tr>
+          <tr><td>Avg Guesses</td><td>${a.averageGuesses.toFixed(3)}</td><td>${b.averageGuesses.toFixed(3)}</td><td>${fmtDelta(dAvg, true)}</td></tr>
+          <tr><td>Median</td><td>${a.medianGuesses}</td><td>${b.medianGuesses}</td><td>${fmtDelta(dMed, true)}</td></tr>
+          <tr><td>Solved</td><td>${a.solved}</td><td>${b.solved}</td><td>${fmtDelta(b.solved-a.solved, false)}</td></tr>
+          <tr><td>Failed</td><td>${a.failed}</td><td>${b.failed}</td><td>${fmtDelta(b.failed-a.failed, true)}</td></tr>
+        </table>
+      </div>
+      <div>
+        <h2 style="color:${GREEN};margin-bottom:8px">Distribution Comparison</h2>
+        <div class="chart-wrap"><canvas id="compareChartCanvas"></canvas></div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <h2 style="color:${GREEN};margin-bottom:8px">Changed Games (${changed.length})</h2>
+      ${changed.length === 0 ? '<div class="empty-msg">No differences</div>' : `
+      <div style="max-height:300px;overflow-y:auto">
+      <table>
+        <tr><th>#</th><th>Answer</th><th>A Guesses</th><th>B Guesses</th><th>Delta</th></tr>
+        ${changed.map(c => `<tr><td>${c.index}</td><td>${c.answer}</td><td>${c.solvedA ? c.countA : 'fail'}</td><td>${c.solvedB ? c.countB : 'fail'}</td><td>${fmtDelta(c.delta, true)}</td></tr>`).join('')}
+      </table></div>`}
+    </div>`;
+
+  if (compareChart) compareChart.destroy();
+  const labels = ['1','2','3','4','5','6','Fail'];
+  const dA = [a.distribution[1],a.distribution[2],a.distribution[3],a.distribution[4],a.distribution[5],a.distribution[6],a.distribution.fail];
+  const dB = [b.distribution[1],b.distribution[2],b.distribution[3],b.distribution[4],b.distribution[5],b.distribution[6],b.distribution.fail];
+  compareChart = new Chart(document.getElementById('compareChartCanvas'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Run A', data: dA, backgroundColor: GREEN + 'aa', borderRadius: 4 },
+      { label: 'Run B', data: dB, backgroundColor: YELLOW + 'aa', borderRadius: 4 }
+    ]},
+    options: { ...chartOpts('Games'), plugins: { legend: { display: true, labels: { color: '#d7dadc' } } } }
+  });
+}
+
+// --- Tab 3: Evolution Timeline ---
+function renderTimeline() {
+  const el = document.getElementById('timelineContent');
+  if (runs.length < 1) { el.innerHTML = '<div class="empty-msg">Load runs to see timeline</div>'; return; }
+  const sorted = runs.map((r, i) => ({ r, i })).sort((a, b) => new Date(a.r.timestamp) - new Date(b.r.timestamp));
+  const labels = sorted.map(s => new Date(s.r.timestamp).toLocaleDateString());
+  const data = sorted.map(s => s.r.summary.averageGuesses);
+  const names = sorted.map(s => s.r.config.name);
+  const rates = sorted.map(s => (s.r.summary.solveRate * 100).toFixed(2));
+
+  el.innerHTML = '<div class="chart-wrap" style="max-width:800px"><canvas id="timelineChartCanvas"></canvas></div>';
+  if (timelineChart) timelineChart.destroy();
+  timelineChart = new Chart(document.getElementById('timelineChartCanvas'), {
+    type: 'line',
+    data: { labels, datasets: [{
+      label: 'Avg Guesses', data, borderColor: GREEN, backgroundColor: GREEN + '33',
+      fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: GREEN
+    }]},
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#d7dadc' } },
+        tooltip: {
+          callbacks: {
+            afterLabel: (ctx) => `Config: ${names[ctx.dataIndex]}\nSolve rate: ${rates[ctx.dataIndex]}%`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#d7dadc' }, grid: { color: '#2a2a2b' }, title: { display: true, text: 'Run Date', color: '#818384' } },
+        y: { ticks: { color: '#d7dadc' }, grid: { color: '#2a2a2b' }, title: { display: true, text: 'Average Guesses', color: '#818384' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
