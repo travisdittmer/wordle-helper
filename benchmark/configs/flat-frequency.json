@@ -1,0 +1,9 @@
+{
+  "name": "flat-frequency",
+  "pastAnswer": {
+    "usedOnce": 0.04,
+    "usedTwice": 0.01
+  },
+  "frequencyWeightRange": [1.0, 1.0],
+  "seasonalBoostEnabled": true
+}

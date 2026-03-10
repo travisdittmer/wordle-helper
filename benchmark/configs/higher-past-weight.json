@@ -1,0 +1,9 @@
+{
+  "name": "higher-past-weight",
+  "pastAnswer": {
+    "usedOnce": 0.10,
+    "usedTwice": 0.03
+  },
+  "frequencyWeightRange": [0.2, 1.0],
+  "seasonalBoostEnabled": true
+}

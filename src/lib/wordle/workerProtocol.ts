@@ -11,7 +11,7 @@ export function shouldCacheFirstGuess(requestedCandidateCount: number, initialCa
 export function chooseCandidateSet(
   nextCanonical: string[],
   nextBroad: string[],
-  pastAnswers?: Set<string>,
+  _pastAnswers?: Set<string>,
 ): { next: string[]; warning: string | null } {
   if (nextCanonical.length === 0 && nextBroad.length > 0) {
     return {
@@ -20,17 +20,8 @@ export function chooseCandidateSet(
     };
   }
 
-  // When all canonical candidates are past Wordle answers, fall back to broad
-  // so the solver can find non-past-answer candidates.
-  if (pastAnswers && nextCanonical.length > 0) {
-    const activeCanonical = nextCanonical.filter(w => !pastAnswers.has(w));
-    if (activeCanonical.length === 0 && nextBroad.length > 0) {
-      return {
-        next: nextBroad,
-        warning: 'Only past Wordle answers match the canonical list; using broader allowed-word matches.',
-      };
-    }
-  }
+  // Note: past-answer fallback removed — NYT reuses past answers (since ~Feb 2026),
+  // so past answers are valid candidates with reduced weight.
 
   if (nextCanonical.length === 1 && nextBroad.length > 1) {
     return {

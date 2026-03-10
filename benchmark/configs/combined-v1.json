@@ -1,0 +1,9 @@
+{
+  "name": "combined-v1",
+  "pastAnswer": {
+    "usedOnce": 0.10,
+    "usedTwice": 0.03
+  },
+  "frequencyWeightRange": [1.0, 1.0],
+  "seasonalBoostEnabled": false
+}
