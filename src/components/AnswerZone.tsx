@@ -61,11 +61,11 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
           ))}
         </div>
         {recommended && (
-          <div className="mt-3 text-xs text-zinc-500">
-            Best strategic guess:{' '}
+          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
+            {candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info-gathering probe (not an answer):'}{' '}
             <button
               onClick={() => onSelectWord(recommended.guess)}
-              className="font-mono text-zinc-300 underline-offset-2 hover:underline"
+              className="font-mono font-semibold text-zinc-200 underline-offset-2 hover:underline"
             >
               {recommended.guess.toUpperCase()}
             </button>

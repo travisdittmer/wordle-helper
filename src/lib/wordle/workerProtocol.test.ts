@@ -18,14 +18,15 @@ test('shouldCacheFirstGuess only caches initial-candidate computation', () => {
   assert.equal(shouldCacheFirstGuess(17, 2309), false);
 });
 
-test('chooseCandidateSet falls back to broad list for stale canonical list (POOCH/MOOCH case)', () => {
-  const res1 = chooseCandidateSet(['pooch'], ['pooch', 'mooch']);
-  assert.deepEqual(res1.next, ['pooch', 'mooch']);
+test('chooseCandidateSet falls back to broad list only when canonical is empty', () => {
+  const res1 = chooseCandidateSet([], ['mooch']);
+  assert.deepEqual(res1.next, ['mooch']);
   assert.ok(res1.warning);
 
-  const res2 = chooseCandidateSet([], ['mooch']);
-  assert.deepEqual(res2.next, ['mooch']);
-  assert.ok(res2.warning);
+  // Single canonical candidate is fine — no fallback needed
+  const res2 = chooseCandidateSet(['pooch'], ['pooch', 'mooch']);
+  assert.deepEqual(res2.next, ['pooch']);
+  assert.equal(res2.warning, null);
 
   const res3 = chooseCandidateSet(['mooch', 'pooch'], ['mooch', 'pooch']);
   assert.deepEqual(res3.next, ['mooch', 'pooch']);

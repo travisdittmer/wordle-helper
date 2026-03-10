@@ -375,7 +375,7 @@ export default function Home() {
             <div className="flex gap-3 text-xs">
               <button
                 onClick={() => setTiles(['B', 'B', 'B', 'B', 'B'])}
-                className="text-zinc-500 hover:text-zinc-300 underline-offset-2 hover:underline"
+                className="px-2 py-1 -mx-2 -my-1 text-zinc-500 hover:text-zinc-300 underline-offset-2 hover:underline"
               >
                 clear tiles
               </button>

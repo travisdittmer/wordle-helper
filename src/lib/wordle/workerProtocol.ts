@@ -23,12 +23,5 @@ export function chooseCandidateSet(
   // Note: past-answer fallback removed — NYT reuses past answers (since ~Feb 2026),
   // so past answers are valid candidates with reduced weight.
 
-  if (nextCanonical.length === 1 && nextBroad.length > 1) {
-    return {
-      next: nextBroad,
-      warning: 'Canonical candidate list may be missing current answers; using broader allowed-word matches.',
-    };
-  }
-
   return { next: nextCanonical, warning: null };
 }
