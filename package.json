@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "tsx --test src/**/*.test.ts && node --test scripts/*.test.mjs",
     "sync:wordlists": "node scripts/sync-wordlists.mjs",
-    "fetch:answers": "node scripts/fetch-answers.mjs"
+    "fetch:answers": "node scripts/fetch-answers.mjs",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "benchmark:quick": "tsx scripts/benchmark.ts --quick"
   },
   "dependencies": {
     "framer-motion": "^12.35.0",
