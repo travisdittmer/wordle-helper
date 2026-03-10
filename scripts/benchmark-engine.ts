@@ -25,6 +25,7 @@ export function computeWeights(
 
     // Remap frequency weight to config range
     const rawFreq = freqW[i];
+    // frequencyWeights() maps to [0.2, 1.0] — see wordFrequency.ts
     const normalizedFreq = (rawFreq - 0.2) / 0.8; // 0..1
     const freq = minFreq + normalizedFreq * (maxFreq - minFreq);
 
@@ -82,7 +83,7 @@ export function playGame(opts: {
     gameIndex,
     answer,
     guesses,
-    guessCount: MAX_GUESSES,
+    guessCount: guesses.length,
     solved: false,
     pastAnswersKnown: pastCounts.size,
     answerWasPastReuse,

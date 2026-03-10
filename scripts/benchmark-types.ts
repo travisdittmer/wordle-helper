@@ -31,8 +31,8 @@ export interface BenchmarkSummary {
     reuse: { games: number; averageGuesses: number; solveRate: number };
   };
   byAnswerType: {
-    newWord: { games: number; averageGuesses: number };
-    reusedAnswer: { games: number; averageGuesses: number };
+    newWord: { games: number; averageGuesses: number; solveRate: number };
+    reusedAnswer: { games: number; averageGuesses: number; solveRate: number };
   };
 }
 
