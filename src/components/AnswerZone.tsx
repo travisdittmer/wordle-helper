@@ -24,19 +24,43 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   let className: string;
 
   if (candidateCount === 1) {
-    className = "rounded-xl border border-emerald-300 bg-emerald-50 p-6 dark:border-emerald-700/50 dark:bg-emerald-950/30";
+    const solvedWord = candidates[0].toUpperCase();
+    className = "rounded-xl border-2 border-emerald-400 bg-emerald-50 p-6 dark:border-emerald-500/60 dark:bg-emerald-950/30 solved-glow";
     content = (
       <>
-        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Solved!</div>
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="mt-1 font-mono text-4xl font-bold text-emerald-800 tracking-widest dark:text-emerald-300"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+          className="text-sm font-medium text-emerald-700 dark:text-emerald-400"
         >
-          {candidates[0].toUpperCase()}
+          Solved!
         </motion.div>
-        <ShareCard history={history} answer={candidates[0]} />
+        <div className="mt-1 flex gap-1">
+          {solvedWord.split('').map((letter, i) => (
+            <motion.span
+              key={i}
+              initial={{ scale: 0, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.15 + i * 0.08,
+                type: 'spring',
+                stiffness: 500,
+                damping: 15,
+              }}
+              className="font-mono text-4xl font-bold text-emerald-800 tracking-widest dark:text-emerald-300"
+            >
+              {letter}
+            </motion.span>
+          ))}
+        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.4 }}
+        >
+          <ShareCard history={history} answer={candidates[0]} />
+        </motion.div>
       </>
     );
   } else if (candidateCount >= 2 && candidateCount <= 25) {
