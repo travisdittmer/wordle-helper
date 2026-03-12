@@ -245,6 +245,9 @@ export default function Home() {
 
   const remainingCandidatesDisplay = activeCandidates.length;
 
+  const candidateSet = useMemo(() => new Set(candidates), [candidates]);
+  const isRecommendedProbe = recommended ? !candidateSet.has(recommended.guess) : false;
+
   const topGuessesList = useMemo(() => {
     if (!showTop) return [];
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
@@ -342,12 +345,15 @@ export default function Home() {
           isComputing={isComputing}
           onSelectWord={(w) => setGuess(w)}
           history={history}
+          isProbe={isRecommendedProbe}
         />
 
         {/* Feedback entry */}
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           {recommended && guess === recommended.guess && (
-            <div className="mb-2 text-[11px] text-zinc-500">solver suggestion loaded</div>
+            <div className="mb-2 text-[11px] text-zinc-500">
+              solver suggestion loaded{isRecommendedProbe ? ' · probe' : ''}
+            </div>
           )}
           {recommended && guess !== recommended.guess && guess.length === 5 && (
             <div className="mb-2 flex items-center gap-2 text-[11px] text-zinc-500">
@@ -448,18 +454,26 @@ export default function Home() {
               </div>
             </div>
             <ul className="mt-2 space-y-2">
-              {topGuessesList.map((x) => (
-                <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <button
-                    className="font-mono text-sm underline-offset-2 hover:underline"
-                    onClick={() => setGuess(x.guess)}
-                    title="Use this guess"
-                  >
-                    {x.guess.toUpperCase()}
-                  </button>
-                  <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
-                </li>
-              ))}
+              {topGuessesList.map((x) => {
+                const isProbe = !candidateSet.has(x.guess);
+                return (
+                  <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="font-mono text-sm underline-offset-2 hover:underline"
+                        onClick={() => setGuess(x.guess)}
+                        title="Use this guess"
+                      >
+                        {x.guess.toUpperCase()}
+                      </button>
+                      {isProbe && (
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500">probe</span>
+                      )}
+                    </div>
+                    <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
+                  </li>
+                );
+              })}
             </ul>
             {candidates.length > 200 && (
               <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">

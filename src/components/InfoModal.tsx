@@ -34,8 +34,15 @@ export function InfoModal({ onClose }: InfoModalProps) {
             colors come back. Think of it like playing 20 Questions optimally.
           </p>
           <p>
+            <strong>Probes vs. candidates:</strong> Sometimes the best strategic guess isn&rsquo;t
+            a word that could be the answer &mdash; it&rsquo;s a <em>probe</em> that eliminates
+            the most possibilities. For example, if the answer is either WATCH or MATCH, guessing
+            WIMPY (a probe) would tell you which one instantly. The app labels probes so you
+            know whether your guess could also solve the puzzle.
+          </p>
+          <p>
             <strong>Extra smarts:</strong> When under 200 candidates remain, the solver looks two
-            steps ahead. It also factors in word commonality and avoids past Wordle answers.
+            steps ahead. It also factors in word commonality and past Wordle answer history.
           </p>
           <p>
             <strong>The score number</strong> is measured in bits of information. A score of 5.0

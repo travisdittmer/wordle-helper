@@ -11,9 +11,11 @@ interface AnswerZoneProps {
   isComputing: boolean;
   onSelectWord: (word: string) => void;
   history: Array<{ guess: string; pattern: Pattern }>;
+  /** Whether the recommended guess is a probe (not a possible answer). */
+  isProbe?: boolean;
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history }: AnswerZoneProps) {
+export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe }: AnswerZoneProps) {
   const stateKey = candidateCount === 1 ? 'solved' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
@@ -96,6 +98,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-white">
           {recommended.guess.toUpperCase()}
         </div>
+        {isProbe && (
+          <div className="mt-1 text-[11px] text-zinc-500">info probe — not a possible answer</div>
+        )}
       </div>
     ) : (
       <div className="text-sm text-zinc-500">Enter your first guess below</div>
