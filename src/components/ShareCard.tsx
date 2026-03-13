@@ -21,8 +21,12 @@ function patternToEmoji(pattern: Pattern): string {
 export function ShareCard({ history, answer }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const guessCount = history.length;
+  // If the answer was deduced (narrowed to 1 candidate) rather than directly guessed,
+  // the final guess isn't in history yet — account for it in count and emoji grid.
+  const lastIsAnswer = history.length > 0 && history[history.length - 1].guess === answer;
+  const guessCount = lastIsAnswer ? history.length : history.length + 1;
   const lines = history.map((h) => patternToEmoji(h.pattern));
+  if (!lastIsAnswer) lines.push(patternToEmoji('GGGGG' as Pattern));
   const shareText = `Wordle Helper \u2192 Solved in ${guessCount}\n\n${lines.join('\n')}\n\nwordlehelper.app`;
 
   async function onCopy() {
