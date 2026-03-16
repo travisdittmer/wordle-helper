@@ -32,19 +32,26 @@ Initial benchmark harness. Plays all historical Wordle games with configurable w
 
 ## Benchmark Runs
 
-### 2026-03-16 — `ef499ee` (candidateBonus fix + git tracking)
+### 2026-03-16 — `0b926e0` (candidateBonus fix + git tracking)
 
-| Config | Mode | Avg | Solve % | Fails | Games |
-|--------|------|-----|---------|-------|-------|
-| flat-frequency | quick | 3.500 | 99.9% | 1 | 1731 |
-| baseline-v1 | quick | 3.504 | 99.9% | 2 | 1731 |
+| Config | Mode | Avg | Solve % | Fails | Time | Games |
+|--------|------|-----|---------|-------|------|-------|
+| flat-frequency | quick | 3.500 | 99.9% | 1 | 20.7 min | 1731 |
+| flat-frequency | full | 3.504 | 100.0% | 0 | 174.1 min | 1731 |
+| baseline-v1 | quick | 3.504 | 99.9% | 2 | 20.8 min | 1731 |
 
-**flat-frequency** (production-equivalent config):
+**flat-frequency quick** (production-equivalent config, no lookahead):
 - Reuse era: avg=3.442, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
 - 1 failure: JOKER (game #675) — solver exhausted guesses testing common letters before finding J. Final sequence: RAISE → DETER → BOREL → MOVER → WOKEN → POKER.
 - Slight overall regression vs 3/10 (3.475 → 3.500) likely due to 6 additional games in the dataset (1725 → 1731), not the solver change.
 
-**baseline-v1**:
+**flat-frequency full** (with two-step lookahead):
+- Reuse era: avg=3.419, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
+- 100% solve rate — lookahead saved JOKER by narrowing to _OKER one guess earlier.
+- Average is slightly worse than quick (3.504 vs 3.500): lookahead shifts some 3-guess solves into 4-guess solves (794 vs 820 threes, 716 vs 678 fours) but converts tail-end failures into solves.
+- Runtime is ~8.4x slower than quick mode (174 min vs 21 min). The lookahead's cost is high relative to its benefit — it eliminates 1 failure out of 1731 games while making the average marginally worse.
+
+**baseline-v1 quick**:
 - Reuse era: avg=3.605, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
 - Note: this config includes frequency + seasonal weights, which the benchmark engine applies even though the production solver no longer uses them.
 
