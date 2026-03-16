@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { ANSWERS_BY_DATE } from '../src/lib/wordle/answersByDate';
 import { POSSIBLE_WORDS, ALLOWED_WORDS } from '../src/lib/wordlists';
 import { playGame } from './benchmark-engine';
@@ -19,6 +20,14 @@ function formatTimestamp(): string {
   return d.toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, '');
 }
 
+function getGitCommit(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   const quick = args.includes('--quick');
@@ -28,7 +37,8 @@ function main() {
     : path.join(root, 'benchmark', 'configs', 'baseline-v1.json');
 
   const config = loadConfig(configPath);
-  console.log(`Benchmark: "${config.name}" ${quick ? '(quick mode)' : '(full mode)'}`);
+  const commitForLog = getGitCommit();
+  console.log(`Benchmark: "${config.name}" ${quick ? '(quick mode)' : '(full mode)'} [${commitForLog}]`);
   console.log(`Games: ${ANSWERS_BY_DATE.length}`);
   console.log('');
 
@@ -83,11 +93,13 @@ function main() {
 
   // Save result
   fs.mkdirSync(resultsDir, { recursive: true });
-  const filename = `${formatTimestamp()}_${config.name}.json`;
+  const gitCommit = getGitCommit();
+  const filename = `${formatTimestamp()}_${config.name}_${gitCommit}.json`;
   const resultPath = path.join(resultsDir, filename);
 
   const result: BenchmarkResult = {
     timestamp: new Date().toISOString(),
+    gitCommit,
     config,
     summary,
     games,

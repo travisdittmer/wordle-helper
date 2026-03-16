@@ -38,6 +38,7 @@ export interface BenchmarkSummary {
 
 export interface BenchmarkResult {
   timestamp: string;
+  gitCommit: string;
   config: WeightConfig;
   summary: BenchmarkSummary;
   games: GameResult[];
