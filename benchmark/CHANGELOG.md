@@ -4,12 +4,14 @@ Tracks solver changes and benchmark results over time. Each entry records the gi
 
 ## Solver Versions
 
-### `885531a` — 2026-03-16
+### `885531a` / `ef499ee` — 2026-03-16
 **fix: candidate bonus went negative when all candidates had low weights**
 
 The `candidateBonus` formula in `solver_fast.ts` (finishThreshold path) used `(1/W) * log2(W)` where W is the total candidate weight. When all remaining candidates were past answers (weight 0.04 each), W < 1 and `log2(W)` went negative, turning the bonus into a massive penalty (~-45 bits). This caused the solver to prefer probe words over actual candidates in small-candidate scenarios (e.g., 2 candidates left), wasting a guess.
 
 Fixed to per-candidate bonus `(w_i/W) * log2(W/w_i)` which depends only on relative weights and is always non-negative.
+
+`ef499ee` also added git commit tracking to benchmark results (hash in JSON, filename, and console output).
 
 ### `82404a3` — 2026-03-10
 **perf: remove frequency and seasonal weight priors**
@@ -30,15 +32,21 @@ Initial benchmark harness. Plays all historical Wordle games with configurable w
 
 ## Benchmark Runs
 
-### 2026-03-16 — `885531a` (candidateBonus fix)
+### 2026-03-16 — `ef499ee` (candidateBonus fix + git tracking)
 
 | Config | Mode | Avg | Solve % | Fails | Games |
 |--------|------|-----|---------|-------|-------|
+| flat-frequency | quick | 3.500 | 99.9% | 1 | 1731 |
 | baseline-v1 | quick | 3.504 | 99.9% | 2 | 1731 |
 
-Reuse era: avg=3.605, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
+**flat-frequency** (production-equivalent config):
+- Reuse era: avg=3.442, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
+- 1 failure: JOKER (game #675) — solver exhausted guesses testing common letters before finding J. Final sequence: RAISE → DETER → BOREL → MOVER → WOKEN → POKER.
+- Slight overall regression vs 3/10 (3.475 → 3.500) likely due to 6 additional games in the dataset (1725 → 1731), not the solver change.
 
-Note: `baseline-v1` config includes frequency + seasonal weights, which the benchmark engine applies even though the production solver no longer uses them. To benchmark what production actually does, use `flat-frequency` config.
+**baseline-v1**:
+- Reuse era: avg=3.605, 100% solve (43 games). Reused answers: avg=3.600 (5 games).
+- Note: this config includes frequency + seasonal weights, which the benchmark engine applies even though the production solver no longer uses them.
 
 ### 2026-03-10 — `82404a3` (frequency/seasonal removed)
 
