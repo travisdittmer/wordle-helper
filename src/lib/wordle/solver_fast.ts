@@ -206,15 +206,25 @@ export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: str
     const searchSpace = [...candidates, ...topProbes];
 
     // Candidate bonus: a candidate guess that happens to be the answer instantly solves.
-    // This is worth 1/N of the time (where N = effective candidate count).
+    // Per-candidate: (w_i / W) * log2(W / w_i) — always non-negative, depends only on
+    // relative weight (not absolute scale), so works correctly even when all weights are small.
     const totalWeight = weights ? weights.reduce((a, b) => a + b, 0) : candidates.length;
-    const candidateBonus = totalWeight > 0 ? (1 / totalWeight) * Math.log2(totalWeight) : 0;
+    const candidateWeightMap = new Map<string, number>();
+    for (let i = 0; i < candidates.length; i++) {
+      candidateWeightMap.set(candidates[i], weights ? weights[i] : 1);
+    }
 
     let bestGuess = candidates[0];
     let bestScore = -Infinity;
     for (const g of searchSpace) {
       let s = weights ? scoreGuessWeightedEntropy(g, candidates, weights) : scoreGuessEntropy(g, candidates);
-      if (candidateSet.has(g)) s += candidateBonus;
+      if (candidateSet.has(g) && totalWeight > 0) {
+        const gWeight = candidateWeightMap.get(g) ?? 0;
+        if (gWeight > 0) {
+          const p = gWeight / totalWeight;
+          s += p * Math.log2(1 / p);
+        }
+      }
       if (s > bestScore) {
         bestScore = s;
         bestGuess = g;
