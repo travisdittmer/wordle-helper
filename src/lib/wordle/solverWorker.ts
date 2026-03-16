@@ -1,6 +1,7 @@
 import { ALLOWED_WORDS, POSSIBLE_WORDS } from '@/lib/wordlists';
-import { pastAnswerCounts, pastAnswerWeight } from './history';
+import { pastAnswerCounts } from './history';
 import { bestNextGuessHeuristic } from './solver_fast';
+import { computeWeights, DEFAULT_WEIGHT_CONFIG } from './weights';
 
 export type WorkerRequest =
   | { type: 'compute'; requestId: number; candidates: string[] }
@@ -25,11 +26,7 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
 
   try {
     const counts = pastAnswerCounts(new Date());
-
-    // Past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
-    const weights = msg.candidates.map((w) => {
-      return pastAnswerWeight(counts.get(w) ?? 0);
-    });
+    const weights = computeWeights(msg.candidates, counts, DEFAULT_WEIGHT_CONFIG);
 
     const { guess, score } = bestNextGuessHeuristic({
       candidates: msg.candidates,

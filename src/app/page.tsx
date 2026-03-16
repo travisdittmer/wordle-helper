@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
-import { initialCandidates, knownPastAnswers, pastAnswerCounts, pastAnswerWeight, todayKey } from '@/lib/wordle/history';
+import { initialCandidates, knownPastAnswers, pastAnswerCounts, todayKey } from '@/lib/wordle/history';
+import { computeWeights, DEFAULT_WEIGHT_CONFIG } from '@/lib/wordle/weights';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
@@ -233,10 +234,7 @@ export default function Home() {
 
   const weights = useMemo(() => {
     const counts = pastAnswerCounts(new Date());
-    // Past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
-    return candidates.map((x) => {
-      return pastAnswerWeight(counts.get(x) ?? 0);
-    });
+    return computeWeights(candidates, counts, DEFAULT_WEIGHT_CONFIG);
   }, [candidates]);
 
   const activeCandidates = useMemo(() => {

@@ -65,11 +65,14 @@ export function knownPastAnswers(now = new Date()): Set<string> {
  *
  * Returns 1.0 for never-used words, reduced values for past answers.
  */
-export function pastAnswerWeight(useCount: number): number {
+export function pastAnswerWeight(
+  useCount: number,
+  config?: { usedOnce: number; usedTwice: number },
+): number {
   if (useCount === 0) return 1.0;
-  if (useCount === 1) return 0.04;
+  if (useCount === 1) return config?.usedOnce ?? 0.04;
   // Used 2+ times — very unlikely to be used again but not impossible
-  return 0.01;
+  return config?.usedTwice ?? 0.01;
 }
 
 /**

@@ -1,37 +1,10 @@
 import { feedbackPattern } from '../src/lib/wordle/feedback';
 import { filterCandidatesByFeedback } from '../src/lib/wordle/solver';
 import { bestNextGuessHeuristic } from '../src/lib/wordle/solver_fast';
-import { frequencyWeights } from '../src/lib/wordle/wordFrequency';
-import { seasonalBoosts } from '../src/lib/wordle/seasonalBoost';
+import { computeWeights } from '../src/lib/wordle/weights';
 import type { WeightConfig, GameResult } from './benchmark-types';
 
 const MAX_GUESSES = 6;
-
-export function computeWeights(
-  candidates: readonly string[],
-  pastCounts: Map<string, number>,
-  config: WeightConfig,
-): number[] {
-  const freqW = frequencyWeights(candidates);
-  const seasonal = config.seasonalBoostEnabled ? seasonalBoosts(candidates) : candidates.map(() => 1);
-  const [minFreq, maxFreq] = config.frequencyWeightRange;
-
-  return candidates.map((word, i) => {
-    const useCount = pastCounts.get(word) ?? 0;
-    let pastFactor: number;
-    if (useCount === 0) pastFactor = 1.0;
-    else if (useCount === 1) pastFactor = config.pastAnswer.usedOnce;
-    else pastFactor = config.pastAnswer.usedTwice;
-
-    // Remap frequency weight to config range
-    const rawFreq = freqW[i];
-    // frequencyWeights() maps to [0.2, 1.0] — see wordFrequency.ts
-    const normalizedFreq = (rawFreq - 0.2) / 0.8; // 0..1
-    const freq = minFreq + normalizedFreq * (maxFreq - minFreq);
-
-    return pastFactor * freq * seasonal[i];
-  });
-}
 
 export function playGame(opts: {
   answer: string;

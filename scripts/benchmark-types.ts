@@ -1,12 +1,5 @@
-export interface WeightConfig {
-  name: string;
-  pastAnswer: {
-    usedOnce: number;
-    usedTwice: number;
-  };
-  frequencyWeightRange: [number, number];
-  seasonalBoostEnabled: boolean;
-}
+import type { WeightConfig } from '../src/lib/wordle/weights';
+export type { WeightConfig };
 
 export interface GameResult {
   gameIndex: number;
