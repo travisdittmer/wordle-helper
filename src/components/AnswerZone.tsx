@@ -13,9 +13,10 @@ interface AnswerZoneProps {
   history: Array<{ guess: string; pattern: Pattern }>;
   /** Whether the recommended guess is a probe (not a possible answer). */
   isProbe?: boolean;
+  onWhyClick?: () => void;
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe }: AnswerZoneProps) {
+export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick }: AnswerZoneProps) {
   const stateKey = candidateCount === 1 ? 'solved' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
@@ -97,6 +98,16 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
             </button>
           </div>
         )}
+        {recommended && onWhyClick && (
+          <button
+            onClick={onWhyClick}
+            className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+          >
+            {candidateCount <= 3 && candidates.length >= 2
+              ? `Why not ${candidates.find(c => c !== recommended.guess)?.toUpperCase()}?`
+              : 'Why this guess?'}
+          </button>
+        )}
       </>
     );
   } else if (candidateCount === 0) {
@@ -124,6 +135,14 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         </div>
         {isProbe && (
           <div className="mt-1 text-[11px] text-zinc-500">info probe — not a possible answer</div>
+        )}
+        {recommended && onWhyClick && !isComputing && (
+          <button
+            onClick={onWhyClick}
+            className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+          >
+            Why this guess?
+          </button>
         )}
       </div>
     ) : (

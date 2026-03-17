@@ -14,6 +14,7 @@ import { InfoModal } from '@/components/InfoModal';
 import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
 import { AnswerZone } from '@/components/AnswerZone';
+import { AnalysisDrawer } from '@/components/AnalysisDrawer';
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 
 function normalizeWord(s: string): string {
@@ -113,6 +114,7 @@ export default function Home() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_lastComputeMs, setLastComputeMs] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState<boolean>(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   // Undo stack: stores previous states so we can revert.
   const [undoStack, setUndoStack] = useState<Array<{
@@ -241,6 +243,10 @@ export default function Home() {
     return candidates.filter((_, i) => weights[i] > 0);
   }, [candidates, weights]);
 
+  const activeWeights = useMemo(() => {
+    return weights.filter((w) => w > 0);
+  }, [weights]);
+
   const remainingCandidatesDisplay = activeCandidates.length;
 
   const candidateSet = useMemo(() => new Set(candidates), [candidates]);
@@ -290,6 +296,7 @@ export default function Home() {
     setBroadCandidates(nextBroad);
     setCandidates(next);
     computeRecommended(next);
+    setAnalysisOpen(false);
   }
 
   function onUndo() {
@@ -303,6 +310,7 @@ export default function Home() {
     setError(null);
     setDataWarning(null);
     computeRecommended(prev.candidates);
+    setAnalysisOpen(false);
   }
 
   function onReset() {
@@ -314,6 +322,7 @@ export default function Home() {
     setHistory([]);
     setUndoStack([]);
     computeRecommended(next);
+    setAnalysisOpen(false);
   }
 
   return (
@@ -344,6 +353,7 @@ export default function Home() {
           onSelectWord={(w) => setGuess(w)}
           history={history}
           isProbe={isRecommendedProbe}
+          onWhyClick={() => setAnalysisOpen(true)}
         />
 
         {/* Feedback entry */}
@@ -485,6 +495,16 @@ export default function Home() {
           {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
         </footer>
       </main>
+      {recommended && (
+        <AnalysisDrawer
+          open={analysisOpen}
+          onClose={() => setAnalysisOpen(false)}
+          guess={recommended.guess}
+          candidates={activeCandidates}
+          weights={activeWeights}
+          history={history}
+        />
+      )}
     </div>
   );
 }
