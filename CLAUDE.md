@@ -31,10 +31,12 @@ Next.js 16 app (App Router, single page) that helps solve daily Wordle puzzles u
 
 ### Candidate weighting
 
-Candidates are weighted by three multiplicative factors:
-- **Past-answer weight** (`history.ts`) — NYT reuses past answers at ~11% rate (since Feb 2026); past answers get reduced weight (0.04 for used-once, 0.01 for used-twice) via `pastAnswerWeight(useCount)`
+Shared weight computation in `src/lib/wordle/weights.ts` — used by both the production solver and benchmark engine. `WeightConfig` controls three multiplicative factors:
+- **Past-answer weight** (`history.ts`) — NYT reuses past answers at ~11% rate (since Feb 2026); past answers get reduced weight (0.04 for used-once, 0.01 for used-twice) via `pastAnswerWeight(useCount, config?)`
 - **Word frequency** (`wordFrequency.ts`) — bigram/unigram scoring as a commonality proxy, maps to [0.2, 1.0]
 - **Seasonal boosts** (`seasonalBoost.ts`) — small multiplier for thematically relevant words by month/date
+
+Production default (`DEFAULT_WEIGHT_CONFIG`): past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
 
 ### Wordlists
 
@@ -54,7 +56,13 @@ A daily GitHub Action (`.github/workflows/update-answers.yml`) runs `fetch:answe
 
 ### UI
 
-Single-page client component (`src/app/page.tsx`). Tailwind CSS v4 for styling. Features: tile-tap feedback entry, undo/reset, guess history with colored tiles, visual keyboard, top-N guess explorer, confidence indicator.
+Single-page client component (`src/app/page.tsx`). Tailwind CSS v4 for styling. Features: tile-tap feedback entry, undo/reset, guess history with colored tiles, visual keyboard, top-N guess explorer, confidence indicator, analysis drawer.
+
+### Analysis drawer
+
+`src/lib/wordle/analysis.ts` — pure functions (`analyzeGuess`, `letterCoverage`) that compute partition data and letter status on demand. No worker needed.
+
+`src/components/AnalysisDrawer.tsx` — side drawer (desktop 320px right panel, mobile bottom sheet). Triggered by "Why?" link on the solver recommendation. Shows stats summary, pattern outcomes with visual flow, and letter coverage grid. Also supports analyzing custom guesses with a comparison banner vs the solver's pick.
 
 ### Benchmark
 
@@ -68,6 +76,9 @@ Key files:
 - `benchmark/configs/` — weight config JSON files
 - `benchmark/results/` — output result JSON files (gitignored)
 - `benchmark/dashboard.html` — standalone visualization dashboard
+- `benchmark/CHANGELOG.md` — tracks solver versions, configs, and historical results
+
+Benchmark results include the git commit hash in the JSON and filename for traceability.
 
 ### Path alias
 
