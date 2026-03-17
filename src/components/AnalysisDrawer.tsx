@@ -35,7 +35,6 @@ function PatternOutcomes({ analysis, guess }: { analysis: GuessAnalysis; guess: 
       </h3>
       <div className="space-y-0">
         {visible.map((p, idx) => {
-          const pct = totalWeight > 0 ? (p.totalWeight / totalWeight) * 100 : 0;
           const isSolve = p.pattern === 'GGGGG';
           let outcomeText: string;
           if (isSolve) {
@@ -64,7 +63,7 @@ function PatternOutcomes({ analysis, guess }: { analysis: GuessAnalysis; guess: 
                 <span className={`flex-1 ${isSolve ? 'text-green-400 font-medium' : 'text-zinc-300'}`}>
                   {outcomeText}
                 </span>
-                <span className="text-zinc-600 tabular-nums text-[10px]">{pct.toFixed(0)}%</span>
+                <span className="text-zinc-600 tabular-nums text-[10px]">{fmtPct(totalWeight > 0 ? p.totalWeight / totalWeight : 0)}</span>
               </div>
             </div>
           );
@@ -138,6 +137,14 @@ function LetterCoverageSection({ coverage, guess }: { coverage: LetterCoverageRe
   );
 }
 
+/** Format a percentage: 0 → "0%", >0 but <1% → "<1%", otherwise round to integer. */
+function fmtPct(v: number): string {
+  const pct = v * 100;
+  if (pct === 0) return '0%';
+  if (pct < 1) return '<1%';
+  return `${Math.round(pct)}%`;
+}
+
 function StatsSummary({ analysis, candidateCount, comparisonGuess, comparisonAnalysis }: {
   analysis: GuessAnalysis;
   candidateCount: number;
@@ -150,26 +157,22 @@ function StatsSummary({ analysis, candidateCount, comparisonGuess, comparisonAna
     {
       label: 'Splits into',
       value: analysis.partitions.length,
-      detail: `${candidateCount} possible → ${analysis.partitions.length} group${analysis.partitions.length === 1 ? '' : 's'}`,
+      detail: `${candidateCount} → ${analysis.partitions.length} groups`,
       compare: comparisonAnalysis?.partitions.length,
       better: (a: number, b: number) => a >= b,
     },
     {
       label: 'Solve chance',
       value: analysis.solveChance,
-      format: (v: number) => `${(v * 100).toFixed(0)}%`,
-      detail: analysis.solveChance > 0
-        ? `${(analysis.solveChance * 100).toFixed(0)}% chance this is the answer`
-        : 'Not a possible answer — pure info gathering',
+      format: fmtPct,
+      detail: analysis.solveChance > 0 ? 'could be the answer' : 'info-gathering probe',
       compare: comparisonAnalysis?.solveChance,
       better: (a: number, b: number) => a >= b,
     },
     {
       label: 'Worst case',
       value: analysis.worstCase,
-      detail: analysis.worstCase <= 1
-        ? 'Guaranteed to solve or narrow to 1'
-        : `At worst, ${analysis.worstCase} candidates remain`,
+      detail: analysis.worstCase <= 1 ? 'narrows to 1' : `${analysis.worstCase} left at worst`,
       compare: comparisonAnalysis?.worstCase,
       better: (a: number, b: number) => a <= b,
     },
