@@ -1,12 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
+
 interface InfoModalProps {
   onClose: () => void;
 }
 
 export function InfoModal({ onClose }: InfoModalProps) {
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-20" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/50 px-4 py-12" onClick={onClose}>
       <div
         className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}

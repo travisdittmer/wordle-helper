@@ -227,7 +227,11 @@ export function AnalysisDrawer({ open, onClose, guess, candidates, weights, hist
   useEffect(() => {
     if (!open) return;
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
   }, [open, handleKeyDown]);
 
   const analysis = useMemo(() => {
