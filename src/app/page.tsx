@@ -115,6 +115,7 @@ export default function Home() {
   const [_lastComputeMs, setLastComputeMs] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState<boolean>(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [analysisGuess, setAnalysisGuess] = useState<string>('');
 
   // Undo stack: stores previous states so we can revert.
   const [undoStack, setUndoStack] = useState<Array<{
@@ -353,7 +354,7 @@ export default function Home() {
           onSelectWord={(w) => setGuess(w)}
           history={history}
           isProbe={isRecommendedProbe}
-          onWhyClick={() => setAnalysisOpen(true)}
+          onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
         />
 
         {/* Feedback entry */}
@@ -372,6 +373,14 @@ export default function Home() {
               >
                 use suggestion
               </button>
+              {allowedGuessSet.has(normalizeWord(guess)) && (
+                <button
+                  onClick={() => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }}
+                  className="text-blue-400 underline-offset-2 hover:underline hover:text-blue-300"
+                >
+                  analyze
+                </button>
+              )}
             </div>
           )}
           <div className="flex items-center gap-3">
@@ -499,10 +508,11 @@ export default function Home() {
         <AnalysisDrawer
           open={analysisOpen}
           onClose={() => setAnalysisOpen(false)}
-          guess={recommended.guess}
+          guess={analysisGuess || recommended.guess}
           candidates={activeCandidates}
           weights={activeWeights}
           history={history}
+          recommendedGuess={recommended.guess}
         />
       )}
     </div>
