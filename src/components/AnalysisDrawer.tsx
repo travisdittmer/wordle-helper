@@ -138,38 +138,79 @@ function LetterCoverageSection({ coverage, guess }: { coverage: LetterCoverageRe
   );
 }
 
-function ComparisonBanner({ customGuess, customAnalysis, recommendedGuess, recommendedAnalysis }: {
-  customGuess: string;
-  customAnalysis: GuessAnalysis;
-  recommendedGuess: string;
-  recommendedAnalysis: GuessAnalysis;
+function StatsSummary({ analysis, candidateCount, comparisonGuess, comparisonAnalysis }: {
+  analysis: GuessAnalysis;
+  candidateCount: number;
+  comparisonGuess?: string;
+  comparisonAnalysis?: GuessAnalysis;
 }) {
-  const customPartitions = customAnalysis.partitions.length;
-  const recPartitions = recommendedAnalysis.partitions.length;
-  const customSolve = customAnalysis.solveChance;
-  const recSolve = recommendedAnalysis.solveChance;
-  const customWorst = customAnalysis.worstCase;
-  const recWorst = recommendedAnalysis.worstCase;
+  const isComparison = comparisonGuess != null && comparisonAnalysis != null;
+
+  const stats = [
+    {
+      label: 'Splits into',
+      value: analysis.partitions.length,
+      detail: `${candidateCount} possible → ${analysis.partitions.length} group${analysis.partitions.length === 1 ? '' : 's'}`,
+      compare: comparisonAnalysis?.partitions.length,
+      better: (a: number, b: number) => a >= b,
+    },
+    {
+      label: 'Solve chance',
+      value: analysis.solveChance,
+      format: (v: number) => `${(v * 100).toFixed(0)}%`,
+      detail: analysis.solveChance > 0
+        ? `${(analysis.solveChance * 100).toFixed(0)}% chance this is the answer`
+        : 'Not a possible answer — pure info gathering',
+      compare: comparisonAnalysis?.solveChance,
+      better: (a: number, b: number) => a >= b,
+    },
+    {
+      label: 'Worst case',
+      value: analysis.worstCase,
+      detail: analysis.worstCase <= 1
+        ? 'Guaranteed to solve or narrow to 1'
+        : `At worst, ${analysis.worstCase} candidates remain`,
+      compare: comparisonAnalysis?.worstCase,
+      better: (a: number, b: number) => a <= b,
+    },
+  ];
+
+  if (isComparison) {
+    return (
+      <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-xs">
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <div className="text-zinc-500" />
+          <div className="font-semibold text-zinc-300">You</div>
+          <div className="font-semibold text-zinc-500">{comparisonGuess!.toUpperCase()}</div>
+          {stats.map((s) => {
+            const formatted = s.format ? s.format(s.value) : String(s.value);
+            const compFormatted = s.compare != null ? (s.format ? s.format(s.compare) : String(s.compare)) : '';
+            const isBetter = s.compare != null && s.better(s.value, s.compare);
+            return [
+              <div key={`${s.label}-l`} className="text-left text-zinc-500">{s.label}</div>,
+              <div key={`${s.label}-v`} className={isBetter ? 'text-green-400' : s.compare != null && !s.better(s.value, s.compare) ? 'text-amber-400' : 'text-zinc-300'}>{formatted}</div>,
+              <div key={`${s.label}-c`} className="text-zinc-500">{compFormatted}</div>,
+            ];
+          })}
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-xs">
-      <div className="grid grid-cols-3 gap-1 text-center">
-        <div className="text-zinc-500" />
-        <div className="font-semibold text-zinc-300">{customGuess.toUpperCase()}</div>
-        <div className="font-semibold text-zinc-500">{recommendedGuess.toUpperCase()}</div>
-
-        <div className="text-left text-zinc-500">Splits into</div>
-        <div className={customPartitions >= recPartitions ? 'text-green-400' : 'text-zinc-300'}>{customPartitions}</div>
-        <div className="text-zinc-500">{recPartitions}</div>
-
-        <div className="text-left text-zinc-500">Solve chance</div>
-        <div className={customSolve >= recSolve ? 'text-green-400' : 'text-zinc-300'}>{(customSolve * 100).toFixed(0)}%</div>
-        <div className="text-zinc-500">{(recSolve * 100).toFixed(0)}%</div>
-
-        <div className="text-left text-zinc-500">Worst case</div>
-        <div className={customWorst <= recWorst ? 'text-green-400' : 'text-amber-400'}>{customWorst}</div>
-        <div className="text-zinc-500">{recWorst}</div>
-      </div>
+    <section className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-xs space-y-2.5">
+      {stats.map((s) => {
+        const formatted = s.format ? s.format(s.value) : String(s.value);
+        return (
+          <div key={s.label} className="flex items-baseline justify-between">
+            <div>
+              <span className="text-zinc-500">{s.label}</span>
+              <span className="ml-2 text-zinc-300 font-semibold">{formatted}</span>
+            </div>
+            <span className="text-[10px] text-zinc-600 max-w-[50%] text-right">{s.detail}</span>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -223,14 +264,12 @@ export function AnalysisDrawer({ open, onClose, guess, candidates, weights, hist
           <button onClick={onClose} className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="Close analysis">&times;</button>
         </div>
         <div className="px-4 py-4 space-y-6">
-          {isCustom && recommendedAnalysis && (
-            <ComparisonBanner
-              customGuess={guess}
-              customAnalysis={analysis}
-              recommendedGuess={recommendedGuess!}
-              recommendedAnalysis={recommendedAnalysis}
-            />
-          )}
+          <StatsSummary
+            analysis={analysis}
+            candidateCount={candidates.length}
+            comparisonGuess={isCustom ? recommendedGuess : undefined}
+            comparisonAnalysis={isCustom ? recommendedAnalysis ?? undefined : undefined}
+          />
           <PatternOutcomes analysis={analysis} guess={guess} />
           <LetterCoverageSection coverage={coverage} guess={guess} />
         </div>
