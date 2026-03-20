@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ONBOARDING_KEY = 'wordle-helper:onboarded';
 
@@ -21,14 +21,17 @@ const STEPS = [
 
 export function OnboardingOverlay() {
   const [step, setStep] = useState(0);
-  const [show, setShow] = useState(() => {
-    if (typeof window === 'undefined') return false;
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
     try {
-      return !localStorage.getItem(ONBOARDING_KEY);
+      if (!localStorage.getItem(ONBOARDING_KEY)) {
+        setShow(true);
+      }
     } catch {
-      return false;
+      // localStorage unavailable — don't show
     }
-  });
+  }, []);
 
   function dismiss() {
     setShow(false);
