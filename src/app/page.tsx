@@ -16,6 +16,7 @@ import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
 import { AnswerZone } from '@/components/AnswerZone';
 import { AnalysisDrawer } from '@/components/AnalysisDrawer';
+import { analyzeGuess, letterCoverage } from '@/lib/wordle/analysis';
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 import { SupportPopover } from '@/components/SupportPopover';
 
@@ -264,6 +265,18 @@ export default function Home() {
   // Derive keyboard letter states from history.
   const letterStates = useMemo(() => deriveLetterStates(history), [history]);
 
+  const recommendedGuessStr = recommended?.guess ?? '';
+  const inlineAnalysis = useMemo(() => {
+    if (!recommendedGuessStr || activeCandidates.length === 0) return null;
+    const analysis = analyzeGuess(recommendedGuessStr, activeCandidates, activeWeights);
+    const coverage = letterCoverage(recommendedGuessStr, history);
+    return {
+      newLetterCount: coverage.newLetters.length,
+      solveChance: analysis.solveChance,
+      worstCase: analysis.worstCase,
+    };
+  }, [recommendedGuessStr, activeCandidates, activeWeights, history]);
+
   function onApplyFeedback() {
     setError(null);
     setDataWarning(null);
@@ -372,6 +385,9 @@ export default function Home() {
               history={history}
               isProbe={isRecommendedProbe}
               onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
+              newLetterCount={inlineAnalysis?.newLetterCount}
+              solveChance={inlineAnalysis?.solveChance}
+              worstCase={inlineAnalysis?.worstCase}
             />
 
             {remainingCandidatesDisplay > 1 && (

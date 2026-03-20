@@ -16,9 +16,12 @@ interface AnswerZoneProps {
   onWhyClick?: () => void;
   /** Display variant: 'standalone' renders full card chrome, 'embedded' strips border/bg for use inside a parent card. */
   variant?: 'standalone' | 'embedded';
+  newLetterCount?: number;
+  solveChance?: number;
+  worstCase?: number;
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick, variant = 'standalone' }: AnswerZoneProps) {
+export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick, variant = 'standalone', newLetterCount, solveChance, worstCase }: AnswerZoneProps) {
   const stateKey = candidateCount === 1 ? 'solved' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
@@ -145,6 +148,26 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         </div>
         {isProbe && (
           <div className="mt-1 text-[11px] text-zinc-500">info probe — not a possible answer</div>
+        )}
+        {/* Inline reasoning pills */}
+        {(newLetterCount != null || solveChance != null || worstCase != null) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {newLetterCount != null && newLetterCount > 0 && (
+              <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-medium text-blue-400">
+                {newLetterCount} new letter{newLetterCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            {solveChance != null && solveChance > 0 && (
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+                {Math.round(solveChance * 100)}% solve chance
+              </span>
+            )}
+            {worstCase != null && (
+              <span className="rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                worst case {worstCase} left
+              </span>
+            )}
+          </div>
         )}
         {recommended && onWhyClick && !isComputing && (
           <button
