@@ -185,6 +185,33 @@ export default function HistoryPage() {
 
   const reversed = useMemo(() => [...filtered].reverse(), [filtered]);
 
+  const [visibleCount, setVisibleCount] = useState(100);
+
+  const visibleEntries = useMemo(() => reversed.slice(0, visibleCount), [reversed, visibleCount]);
+
+  const grouped = useMemo(() => {
+    const groups: Array<{ label: string; entries: typeof reversed }> = [];
+    let currentLabel = '';
+    let currentEntries: typeof reversed = [];
+
+    for (const entry of visibleEntries) {
+      const label = entry.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: 'UTC' });
+      if (label !== currentLabel) {
+        if (currentEntries.length > 0) {
+          groups.push({ label: currentLabel, entries: currentEntries });
+        }
+        currentLabel = label;
+        currentEntries = [entry];
+      } else {
+        currentEntries.push(entry);
+      }
+    }
+    if (currentEntries.length > 0) {
+      groups.push({ label: currentLabel, entries: currentEntries });
+    }
+    return groups;
+  }, [visibleEntries]);
+
   const stats = useMemo(() => computeStats(entries), [entries]);
 
   return (
@@ -231,70 +258,87 @@ export default function HistoryPage() {
           </span>
         </div>
 
-        {/* Search + filter */}
-        <div className="flex items-center gap-3">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="search word, #, or date…"
-            className="flex-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-500 focus:border-zinc-500 dark:border-zinc-700 dark:placeholder:text-zinc-600"
-          />
-          <div className="flex gap-1">
-            {(['all', 'reused', 'rare'] as Filter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-md px-2.5 py-1.5 text-xs transition-colors ${
-                  filter === f
-                    ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+        {/* Sticky search + filter */}
+        <div className="sticky top-0 z-10 -mx-4 bg-zinc-50/95 px-4 pb-3 pt-2 backdrop-blur-sm dark:bg-black/95">
+          <div className="flex items-center gap-3">
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setVisibleCount(100); }}
+              placeholder="Search word, #, or date..."
+              className="flex-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-500 focus:border-zinc-500 dark:border-zinc-700 dark:placeholder:text-zinc-600"
+            />
+            <div className="flex gap-1">
+              {(['all', 'reused', 'rare'] as Filter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => { setFilter(f); setVisibleCount(100); }}
+                  className={`rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+                    filter === f
+                      ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
+          {(search || filter !== 'all') && (
+            <div className="mt-1.5 text-xs text-zinc-500">
+              {reversed.length} result{reversed.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
 
-        {/* Results count */}
-        {(search || filter !== 'all') && (
-          <div className="text-xs text-zinc-500">
-            {reversed.length} result{reversed.length !== 1 ? 's' : ''}
-          </div>
-        )}
-
-        {/* Answer list */}
+        {/* Grouped answer list */}
         <div className="flex flex-col">
-          {reversed.map((entry) => (
-            <div
-              key={entry.index}
-              className="flex items-center justify-between border-b border-zinc-200/50 px-1 py-2.5 dark:border-zinc-800/50"
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-12 text-right font-mono text-xs text-zinc-500">
-                  #{entry.index}
-                </span>
-                <span className="font-mono text-sm font-semibold tracking-widest">
-                  {entry.word.toUpperCase()}
-                </span>
-                {entry.reuse && (
-                  <span
-                    className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-                    title={`First used as #${entry.firstUsedIndex} on ${formatDate(puzzleDate(entry.firstUsedIndex!))}`}
-                  >
-                    reused &larr; #{entry.firstUsedIndex}
-                  </span>
-                )}
-                {entry.rarePick && (
-                  <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
-                    rare pick
-                  </span>
-                )}
+          {grouped.map((group) => (
+            <div key={group.label}>
+              <div className="sticky top-14 z-[5] -mx-4 bg-zinc-100/90 px-5 py-1.5 text-xs font-semibold text-zinc-500 backdrop-blur-sm dark:bg-zinc-950/90">
+                {group.label}
               </div>
-              <span className="text-xs text-zinc-500">{formatDate(entry.date)}</span>
+              {group.entries.map((entry) => (
+                <div
+                  key={entry.index}
+                  className="flex items-center justify-between border-b border-zinc-200/50 px-1 py-2.5 dark:border-zinc-800/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-12 text-right font-mono text-xs tabular-nums text-zinc-500">
+                      #{entry.index}
+                    </span>
+                    <span className="font-mono text-sm font-semibold tracking-widest">
+                      {entry.word.toUpperCase()}
+                    </span>
+                    {entry.reuse && (
+                      <span
+                        className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                        title={`First used as #${entry.firstUsedIndex} on ${formatDate(puzzleDate(entry.firstUsedIndex!))}`}
+                      >
+                        reused &larr; #{entry.firstUsedIndex}
+                      </span>
+                    )}
+                    {entry.rarePick && (
+                      <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                        rare pick
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs tabular-nums text-zinc-500">{formatDate(entry.date)}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
+
+        {/* Load more */}
+        {visibleCount < reversed.length && (
+          <button
+            onClick={() => setVisibleCount((c) => c + 200)}
+            className="mx-auto my-4 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 transition-colors"
+          >
+            Load more ({(reversed.length - visibleCount).toLocaleString()} remaining)
+          </button>
+        )}
 
         {reversed.length === 0 && (
           <div className="py-12 text-center text-sm text-zinc-500">No matches found.</div>
