@@ -359,52 +359,58 @@ export default function Home() {
 
         {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
-        {/* Answer Zone — always visible, adapts to state */}
-        <AnswerZone
-          candidateCount={remainingCandidatesDisplay}
-          candidates={activeCandidates}
-          recommended={recommended}
-          isComputing={isComputing}
-          onSelectWord={(w) => setGuess(w)}
-          history={history}
-          isProbe={isRecommendedProbe}
-          onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
-        />
-
-        {/* Feedback entry */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <FeedbackEntry
-            guess={guess}
-            onGuessChange={setGuess}
-            tiles={tiles}
-            onTilesChange={setTiles}
-            onApply={onApplyFeedback}
-            onUndo={history.length > 0 ? onUndo : undefined}
-            onReset={history.length > 0 ? onReset : undefined}
-            error={error}
-            dataWarning={dataWarning}
-            statusLabel={
-              recommended && guess === recommended.guess
-                ? `Suggested guess${isRecommendedProbe ? ' · info probe' : ''}`
-                : recommended && guess !== recommended.guess && guess.length === 5
-                  ? 'Your guess'
-                  : null
-            }
-            onUseSolverPick={
-              recommended && guess !== recommended.guess
-                ? () => setGuess(recommended.guess)
-                : undefined
-            }
-            onAnalyze={
-              recommended && guess !== recommended.guess && guess.length === 5 && allowedGuessSet.has(normalizeWord(guess))
-                ? () => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }
-                : undefined
-            }
-            showHistoryActions={history.length > 0}
+        {/* Solver Composer — unified recommendation + feedback */}
+        <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
+          <AnswerZone
+            variant="embedded"
+            candidateCount={remainingCandidatesDisplay}
+            candidates={activeCandidates}
+            recommended={recommended}
+            isComputing={isComputing}
+            onSelectWord={(w) => setGuess(w)}
+            history={history}
+            isProbe={isRecommendedProbe}
+            onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
           />
-        </section>
 
-        {history.length > 0 && <div className="border-t border-zinc-800/30" />}
+          {remainingCandidatesDisplay > 1 && (
+            <div className="border-t border-zinc-800/50" />
+          )}
+
+          {remainingCandidatesDisplay > 1 && (
+            <div className="p-5">
+              <FeedbackEntry
+                guess={guess}
+                onGuessChange={setGuess}
+                tiles={tiles}
+                onTilesChange={setTiles}
+                onApply={onApplyFeedback}
+                onUndo={history.length > 0 ? onUndo : undefined}
+                onReset={history.length > 0 ? onReset : undefined}
+                error={error}
+                dataWarning={dataWarning}
+                statusLabel={
+                  recommended && guess === recommended.guess
+                    ? `Suggested guess${isRecommendedProbe ? ' · info probe' : ''}`
+                    : recommended && guess !== recommended.guess && guess.length === 5
+                      ? 'Your guess'
+                      : null
+                }
+                onUseSolverPick={
+                  recommended && guess !== recommended.guess
+                    ? () => setGuess(recommended.guess)
+                    : undefined
+                }
+                onAnalyze={
+                  recommended && guess !== recommended.guess && guess.length === 5 && allowedGuessSet.has(normalizeWord(guess))
+                    ? () => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }
+                    : undefined
+                }
+                showHistoryActions={history.length > 0}
+              />
+            </div>
+          )}
+        </section>
 
         {/* History */}
         {history.length > 0 && (

@@ -14,9 +14,11 @@ interface AnswerZoneProps {
   /** Whether the recommended guess is a probe (not a possible answer). */
   isProbe?: boolean;
   onWhyClick?: () => void;
+  /** Display variant: 'standalone' renders full card chrome, 'embedded' strips border/bg for use inside a parent card. */
+  variant?: 'standalone' | 'embedded';
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick }: AnswerZoneProps) {
+export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick, variant = 'standalone' }: AnswerZoneProps) {
   const stateKey = candidateCount === 1 ? 'solved' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
@@ -26,7 +28,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
 
   if (candidateCount === 1) {
     const solvedWord = candidates[0].toUpperCase();
-    className = "rounded-xl border-2 border-emerald-400 bg-emerald-50 p-6 dark:border-emerald-500/60 dark:bg-emerald-950/30 solved-glow";
+    className = variant === 'embedded'
+      ? "p-6 border-l-2 border-emerald-500/60"
+      : "rounded-xl border-2 border-emerald-400 bg-emerald-50 p-6 dark:border-emerald-500/60 dark:bg-emerald-950/30 solved-glow";
     content = (
       <>
         <motion.div
@@ -65,7 +69,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
       </>
     );
   } else if (candidateCount >= 2 && candidateCount <= 25) {
-    className = "rounded-xl border border-zinc-800 bg-zinc-950 p-6";
+    className = variant === 'embedded'
+      ? "p-6"
+      : "rounded-xl border border-zinc-800 bg-zinc-950 p-6";
     content = (
       <>
         <div className="text-sm font-medium text-zinc-400">
@@ -111,7 +117,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
       </>
     );
   } else if (candidateCount === 0) {
-    className = "rounded-xl border border-red-900/50 bg-red-950/20 p-6";
+    className = variant === 'embedded'
+      ? "p-6"
+      : "rounded-xl border border-red-900/50 bg-red-950/20 p-6";
     content = (
       <>
         <div className="text-sm font-medium text-red-400">No possible answers remain</div>
@@ -119,7 +127,9 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
       </>
     );
   } else {
-    className = "rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6";
+    className = variant === 'embedded'
+      ? "p-6"
+      : "rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6";
     content = isComputing ? (
       <div>
         <div className="text-sm font-medium text-zinc-400">Finding best guess...</div>
