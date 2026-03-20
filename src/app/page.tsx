@@ -330,166 +330,170 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-        <OnboardingOverlay />
-        {/* Slim header */}
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
-            <button
-              onClick={() => setShowInfo(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              aria-label="How does this work?"
-              title="How does this work?"
-            >
-              i
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <SupportPopover />
-            <Link
-              href="/history"
-              target="_blank"
-              className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
-            >
-              history
-            </Link>
-          </div>
-        </header>
-
-        {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
-
-        {/* Solver Composer — unified recommendation + feedback */}
-        <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
-          <AnswerZone
-            variant="embedded"
-            candidateCount={remainingCandidatesDisplay}
-            candidates={activeCandidates}
-            recommended={recommended}
-            isComputing={isComputing}
-            onSelectWord={(w) => setGuess(w)}
-            history={history}
-            isProbe={isRecommendedProbe}
-            onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
-          />
-
-          {remainingCandidatesDisplay > 1 && (
-            <div className="border-t border-zinc-800/50" />
-          )}
-
-          {remainingCandidatesDisplay > 1 && (
-            <div className="p-5">
-              <FeedbackEntry
-                guess={guess}
-                onGuessChange={setGuess}
-                tiles={tiles}
-                onTilesChange={setTiles}
-                onApply={onApplyFeedback}
-                onUndo={history.length > 0 ? onUndo : undefined}
-                onReset={history.length > 0 ? onReset : undefined}
-                error={error}
-                dataWarning={dataWarning}
-                statusLabel={
-                  recommended && guess === recommended.guess
-                    ? `Suggested guess${isRecommendedProbe ? ' · info probe' : ''}`
-                    : recommended && guess !== recommended.guess && guess.length === 5
-                      ? 'Your guess'
-                      : null
-                }
-                onUseSolverPick={
-                  recommended && guess !== recommended.guess
-                    ? () => setGuess(recommended.guess)
-                    : undefined
-                }
-                onAnalyze={
-                  recommended && guess !== recommended.guess && guess.length === 5 && allowedGuessSet.has(normalizeWord(guess))
-                    ? () => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }
-                    : undefined
-                }
-                showHistoryActions={history.length > 0}
-              />
+      <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="flex flex-col gap-4">
+          <OnboardingOverlay />
+          {/* Slim header */}
+          <header className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
+              <button
+                onClick={() => setShowInfo(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                aria-label="How does this work?"
+                title="How does this work?"
+              >
+                i
+              </button>
             </div>
-          )}
-        </section>
-
-        {/* History */}
-        {history.length > 0 && (
-          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
-            <div className="mt-3">
-              <GuessHistory history={history} />
+            <div className="flex items-center gap-3">
+              <SupportPopover />
+              <Link
+                href="/history"
+                target="_blank"
+                className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
+              >
+                history
+              </Link>
             </div>
-          </section>
-        )}
+          </header>
 
-        {/* Keyboard */}
-        {history.length > 0 && (
-          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-400">Keyboard</h2>
-            <div className="mt-3">
-              <VisualKeyboard letterStates={letterStates} />
-            </div>
-          </section>
-        )}
+          {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
-        {/* Top guesses explorer */}
-        <button
-          onClick={() => setShowTop(!showTop)}
-          className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          <span className={`inline-block transition-transform ${showTop ? 'rotate-90' : ''}`}>&#9654;</span>
-          Explore alternatives
-        </button>
+          {/* Solver Composer — unified recommendation + feedback */}
+          <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
+            <AnswerZone
+              variant="embedded"
+              candidateCount={remainingCandidatesDisplay}
+              candidates={activeCandidates}
+              recommended={recommended}
+              isComputing={isComputing}
+              onSelectWord={(w) => setGuess(w)}
+              history={history}
+              isProbe={isRecommendedProbe}
+              onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
+            />
 
-        {showTop && (
-          <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Alternative guesses</div>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-zinc-500 dark:text-zinc-400">Show</span>
-                <input
-                  type="number"
-                  value={topN}
-                  onChange={(e) => setTopN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
-                  className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
-                  min={1}
-                  max={50}
+            {remainingCandidatesDisplay > 1 && (
+              <div className="border-t border-zinc-800/50" />
+            )}
+
+            {remainingCandidatesDisplay > 1 && (
+              <div className="p-5">
+                <FeedbackEntry
+                  guess={guess}
+                  onGuessChange={setGuess}
+                  tiles={tiles}
+                  onTilesChange={setTiles}
+                  onApply={onApplyFeedback}
+                  onUndo={history.length > 0 ? onUndo : undefined}
+                  onReset={history.length > 0 ? onReset : undefined}
+                  error={error}
+                  dataWarning={dataWarning}
+                  statusLabel={
+                    recommended && guess === recommended.guess
+                      ? `Suggested guess${isRecommendedProbe ? ' · info probe' : ''}`
+                      : recommended && guess !== recommended.guess && guess.length === 5
+                        ? 'Your guess'
+                        : null
+                  }
+                  onUseSolverPick={
+                    recommended && guess !== recommended.guess
+                      ? () => setGuess(recommended.guess)
+                      : undefined
+                  }
+                  onAnalyze={
+                    recommended && guess !== recommended.guess && guess.length === 5 && allowedGuessSet.has(normalizeWord(guess))
+                      ? () => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }
+                      : undefined
+                  }
+                  showHistoryActions={history.length > 0}
                 />
-              </div>
-            </div>
-            <ul className="mt-2 space-y-2">
-              {topGuessesList.map((x) => {
-                const isProbe = !candidateSet.has(x.guess);
-                return (
-                  <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="font-mono text-sm underline-offset-2 hover:underline"
-                        onClick={() => setGuess(x.guess)}
-                        title="Use this guess"
-                      >
-                        {x.guess.toUpperCase()}
-                      </button>
-                      {isProbe && (
-                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500">probe</span>
-                      )}
-                    </div>
-                    <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
-                  </li>
-                );
-              })}
-            </ul>
-            {candidates.length > 200 && (
-              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Showing a subset of guesses for speed. Full search available when fewer words remain.
               </div>
             )}
           </section>
-        )}
 
-        <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-          {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
-        </footer>
+          {/* Top guesses explorer */}
+          <button
+            onClick={() => setShowTop(!showTop)}
+            className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            <span className={`inline-block transition-transform ${showTop ? 'rotate-90' : ''}`}>&#9654;</span>
+            Explore alternatives
+          </button>
+
+          {showTop && (
+            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Alternative guesses</div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Show</span>
+                  <input
+                    type="number"
+                    value={topN}
+                    onChange={(e) => setTopN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
+                    className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+                    min={1}
+                    max={50}
+                  />
+                </div>
+              </div>
+              <ul className="mt-2 space-y-2">
+                {topGuessesList.map((x) => {
+                  const isProbe = !candidateSet.has(x.guess);
+                  return (
+                    <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="font-mono text-sm underline-offset-2 hover:underline"
+                          onClick={() => setGuess(x.guess)}
+                          title="Use this guess"
+                        >
+                          {x.guess.toUpperCase()}
+                        </button>
+                        {isProbe && (
+                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500">probe</span>
+                        )}
+                      </div>
+                      <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {candidates.length > 200 && (
+                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  Showing a subset of guesses for speed. Full search available when fewer words remain.
+                </div>
+              )}
+            </section>
+          )}
+
+          <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
+            {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
+          </footer>
+        </div>
+
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
+          {/* History */}
+          {history.length > 0 && (
+            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
+              <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
+              <div className="mt-3">
+                <GuessHistory history={history} />
+              </div>
+            </section>
+          )}
+
+          {/* Keyboard */}
+          {history.length > 0 && (
+            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
+              <h2 className="text-sm font-semibold text-zinc-400">Keyboard</h2>
+              <div className="mt-3">
+                <VisualKeyboard letterStates={letterStates} />
+              </div>
+            </section>
+          )}
+        </aside>
       </main>
       {recommended && (
         <AnalysisDrawer
