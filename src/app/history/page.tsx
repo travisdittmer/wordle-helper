@@ -198,7 +198,7 @@ export default function HistoryPage() {
             <h1 className="text-lg font-semibold tracking-tight">Answer History</h1>
             <button
               onClick={() => setShowInfo(true)}
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-300 text-[10px] text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
               aria-label="About this page"
               title="About this page"
             >

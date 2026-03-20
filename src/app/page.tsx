@@ -338,7 +338,7 @@ export default function Home() {
             <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
             <button
               onClick={() => setShowInfo(true)}
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-300 text-[10px] text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
               aria-label="How does this work?"
               title="How does this work?"
             >
@@ -398,7 +398,9 @@ export default function Home() {
             </div>
           )}
           <div className="flex items-center gap-3">
+            <label htmlFor="guess-input" className="sr-only">Your guess</label>
             <input
+              id="guess-input"
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
               inputMode="text"

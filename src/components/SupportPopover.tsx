@@ -28,7 +28,7 @@ export function SupportPopover() {
     <div className="relative inline-block" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-base text-zinc-600 hover:text-zinc-400 transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50 transition-colors"
         aria-label="Support this project"
         title="Support this project"
       >
