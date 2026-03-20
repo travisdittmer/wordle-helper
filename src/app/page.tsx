@@ -17,6 +17,7 @@ import type { LetterState } from '@/components/VisualKeyboard';
 import { AnswerZone } from '@/components/AnswerZone';
 import { AnalysisDrawer } from '@/components/AnalysisDrawer';
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
+import { SupportPopover } from '@/components/SupportPopover';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
@@ -510,8 +511,9 @@ export default function Home() {
           </section>
         )}
 
-        <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-          {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
+        <footer className="flex items-center justify-between pb-6 text-xs text-zinc-500 dark:text-zinc-500">
+          <span>{WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining</span>
+          <SupportPopover />
         </footer>
       </main>
       {recommended && (

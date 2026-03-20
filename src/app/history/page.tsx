@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ANSWERS_BY_DATE } from '@/lib/wordle/answersByDate';
 import { NON_CANONICAL_ANSWERS } from '@/lib/wordlists';
+import { SupportPopover } from '@/components/SupportPopover';
 
 const ORIGIN = new Date(Date.UTC(2021, 5, 19));
 
@@ -296,8 +297,9 @@ export default function HistoryPage() {
           <div className="py-12 text-center text-sm text-zinc-500">No matches found.</div>
         )}
 
-        <footer className="pb-6 text-xs text-zinc-500">
-          Data from NYT Wordle API. Puzzle #0 = Jun 19, 2021.
+        <footer className="flex items-center justify-between pb-6 text-xs text-zinc-500">
+          <span>Data from NYT Wordle API. Puzzle #0 = Jun 19, 2021.</span>
+          <SupportPopover />
         </footer>
       </main>
     </div>
