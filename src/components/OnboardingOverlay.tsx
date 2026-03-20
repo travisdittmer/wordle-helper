@@ -4,32 +4,17 @@ import { useState, useEffect } from 'react';
 
 const ONBOARDING_KEY = 'wordle-helper:onboarded';
 
-const STEPS = [
-  {
-    title: 'Enter your guess',
-    body: 'Type the word you guessed in Wordle, or use the suggestion we provide.',
-  },
-  {
-    title: 'Match the colors',
-    body: 'Tap each tile to cycle through gray, yellow, and green \u2014 match what Wordle showed you.',
-  },
-  {
-    title: 'Get your next guess',
-    body: 'Hit Apply and we\u2019ll tell you the best word to try next. Repeat until solved!',
-  },
-];
-
 export function OnboardingOverlay() {
-  const [step, setStep] = useState(0);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     try {
       if (!localStorage.getItem(ONBOARDING_KEY)) {
-        setShow(true);
+        const timer = setTimeout(() => setShow(true), 600);
+        return () => clearTimeout(timer);
       }
     } catch {
-      // localStorage unavailable — don't show
+      // localStorage unavailable
     }
   }, []);
 
@@ -44,24 +29,25 @@ export function OnboardingOverlay() {
 
   if (!show) return null;
 
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
-      <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-zinc-500">{step + 1} of {STEPS.length}</div>
-          <button onClick={dismiss} className="text-xs text-zinc-500 hover:text-zinc-300">skip</button>
+    <div className="fixed inset-x-0 bottom-0 z-40 p-4 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:max-w-sm">
+      <div className="rounded-xl border border-zinc-700 bg-zinc-900/95 p-4 shadow-xl backdrop-blur-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-zinc-100">
+              Type your guess, tap tiles to match colors, then Apply.
+            </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              We suggest the best word — just set the tile colors Wordle gave you.
+            </p>
+          </div>
+          <button
+            onClick={dismiss}
+            className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            Got it
+          </button>
         </div>
-        <h3 className="mt-3 text-lg font-semibold text-white">{current.title}</h3>
-        <p className="mt-2 text-sm text-zinc-300">{current.body}</p>
-        <button
-          onClick={() => isLast ? dismiss() : setStep(step + 1)}
-          className="mt-5 w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-white"
-        >
-          {isLast ? 'Got it' : 'Next'}
-        </button>
       </div>
     </div>
   );
