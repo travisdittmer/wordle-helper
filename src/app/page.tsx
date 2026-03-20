@@ -19,6 +19,7 @@ import { AnalysisDrawer } from '@/components/AnalysisDrawer';
 import { analyzeGuess, letterCoverage } from '@/lib/wordle/analysis';
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 import { SupportPopover } from '@/components/SupportPopover';
+import { ExploreAlternatives } from '@/components/ExploreAlternatives';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
@@ -109,8 +110,7 @@ export default function Home() {
   const [guess, setGuess] = useState<string>('');
   const [tiles, setTiles] = useState<Tile[]>(['B', 'B', 'B', 'B', 'B']);
   const [history, setHistory] = useState<Array<{ guess: string; pattern: Pattern }>>([]);
-  const [showTop, setShowTop] = useState<boolean>(false);
-  const [topN, setTopN] = useState<number>(10);
+  const [explorerOpen, setExplorerOpen] = useState(false);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isComputing, setIsComputing] = useState<boolean>(false);
@@ -257,10 +257,10 @@ export default function Home() {
   const isRecommendedProbe = recommended ? !candidateSet.has(recommended.guess) : false;
 
   const topGuessesList = useMemo(() => {
-    if (!showTop) return [];
+    if (!explorerOpen) return [];
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
-    return topGuesses({ candidates, weights, allowedGuesses: space, limit: topN });
-  }, [showTop, candidates, weights, allowedGuesses, topN]);
+    return topGuesses({ candidates, weights, allowedGuesses: space, limit: 50 });
+  }, [explorerOpen, candidates, weights, allowedGuesses]);
 
   // Derive keyboard letter states from history.
   const letterStates = useMemo(() => deriveLetterStates(history), [history]);
@@ -429,60 +429,15 @@ export default function Home() {
             )}
           </section>
 
-          {/* Top guesses explorer */}
-          <button
-            onClick={() => setShowTop(!showTop)}
-            className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            <span className={`inline-block transition-transform ${showTop ? 'rotate-90' : ''}`}>&#9654;</span>
-            Explore alternatives
-          </button>
-
-          {showTop && (
-            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Alternative guesses</div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-zinc-500 dark:text-zinc-400">Show</span>
-                  <input
-                    type="number"
-                    value={topN}
-                    onChange={(e) => setTopN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
-                    className="w-16 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
-                    min={1}
-                    max={50}
-                  />
-                </div>
-              </div>
-              <ul className="mt-2 space-y-2">
-                {topGuessesList.map((x) => {
-                  const isProbe = !candidateSet.has(x.guess);
-                  return (
-                    <li key={x.guess} className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="font-mono text-sm underline-offset-2 hover:underline"
-                          onClick={() => setGuess(x.guess)}
-                          title="Use this guess"
-                        >
-                          {x.guess.toUpperCase()}
-                        </button>
-                        {isProbe && (
-                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500">probe</span>
-                        )}
-                      </div>
-                      <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{x.score.toFixed(3)}</div>
-                    </li>
-                  );
-                })}
-              </ul>
-              {candidates.length > 200 && (
-                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  Showing a subset of guesses for speed. Full search available when fewer words remain.
-                </div>
-              )}
-            </section>
-          )}
+          <ExploreAlternatives
+            open={explorerOpen}
+            onOpenChange={setExplorerOpen}
+            guesses={topGuessesList}
+            candidateSet={candidateSet}
+            onSelectGuess={setGuess}
+            candidateCount={remainingCandidatesDisplay}
+            showSpeedNote={candidates.length > 200}
+          />
 
           <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
             {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
