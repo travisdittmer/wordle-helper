@@ -136,7 +136,19 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
     content = isComputing ? (
       <div>
         <div className="text-sm font-medium text-zinc-400">Finding best guess...</div>
-        <div className="mt-2 h-8 w-32 animate-pulse rounded bg-zinc-800" />
+        <div className="mt-2 flex gap-1">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-10 w-10 rounded-lg bg-zinc-800 animate-pulse"
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
+        </div>
+        <div className="mt-3 flex gap-1.5">
+          <div className="h-5 w-20 rounded-full bg-zinc-800/50 animate-pulse" style={{ animationDelay: '200ms' }} />
+          <div className="h-5 w-24 rounded-full bg-zinc-800/50 animate-pulse" style={{ animationDelay: '300ms' }} />
+        </div>
       </div>
     ) : recommended ? (
       <div>
