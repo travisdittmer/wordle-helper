@@ -205,12 +205,15 @@ export default function HistoryPage() {
               i
             </button>
           </div>
-          <Link
-            href="/"
-            className="text-sm text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
-          >
-            solver
-          </Link>
+          <div className="flex items-center gap-3">
+            <SupportPopover />
+            <Link
+              href="/"
+              className="text-sm text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
+            >
+              solver
+            </Link>
+          </div>
         </header>
 
         {/* Stats bar */}
@@ -297,9 +300,8 @@ export default function HistoryPage() {
           <div className="py-12 text-center text-sm text-zinc-500">No matches found.</div>
         )}
 
-        <footer className="flex items-center justify-between pb-6 text-xs text-zinc-500">
-          <span>Data from NYT Wordle API. Puzzle #0 = Jun 19, 2021.</span>
-          <SupportPopover />
+        <footer className="pb-6 text-xs text-zinc-500">
+          Data from NYT Wordle API. Puzzle #0 = Jun 19, 2021.
         </footer>
       </main>
     </div>

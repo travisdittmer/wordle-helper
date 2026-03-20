@@ -345,13 +345,16 @@ export default function Home() {
               i
             </button>
           </div>
-          <Link
-            href="/history"
-            target="_blank"
-            className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
-          >
-            history
-          </Link>
+          <div className="flex items-center gap-3">
+            <SupportPopover />
+            <Link
+              href="/history"
+              target="_blank"
+              className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
+            >
+              history
+            </Link>
+          </div>
         </header>
 
         {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
@@ -511,9 +514,8 @@ export default function Home() {
           </section>
         )}
 
-        <footer className="flex items-center justify-between pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-          <span>{WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining</span>
-          <SupportPopover />
+        <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
+          {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
         </footer>
       </main>
       {recommended && (
