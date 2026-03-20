@@ -375,24 +375,24 @@ export default function Home() {
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           {recommended && guess === recommended.guess && (
             <div className="mb-2 text-[11px] text-zinc-500">
-              solver suggestion loaded{isRecommendedProbe ? ' · probe' : ''}
+              Suggested guess{isRecommendedProbe ? ' · info probe' : ''}
             </div>
           )}
           {recommended && guess !== recommended.guess && guess.length === 5 && (
             <div className="mb-2 flex items-center gap-2 text-[11px] text-zinc-500">
-              <span>custom guess</span>
+              <span>Your guess</span>
               <button
                 onClick={() => setGuess(recommended.guess)}
                 className="text-zinc-300 underline-offset-2 hover:underline"
               >
-                use suggestion
+                Use solver pick
               </button>
               {allowedGuessSet.has(normalizeWord(guess)) && (
                 <button
                   onClick={() => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }}
                   className="text-blue-400 underline-offset-2 hover:underline hover:text-blue-300"
                 >
-                  analyze
+                  Analyze this
                 </button>
               )}
             </div>
@@ -438,7 +438,7 @@ export default function Home() {
             onClick={onApplyFeedback}
             className="mt-4 w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
-            Apply feedback
+            Apply
           </button>
         </section>
 
@@ -465,17 +465,20 @@ export default function Home() {
         )}
 
         {/* Top guesses explorer */}
-        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-          <input type="checkbox" checked={showTop} onChange={(e) => setShowTop(e.target.checked)} />
-          show top guesses
-        </label>
+        <button
+          onClick={() => setShowTop(!showTop)}
+          className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          <span className={`inline-block transition-transform ${showTop ? 'rotate-90' : ''}`}>&#9654;</span>
+          Explore alternatives
+        </button>
 
         {showTop && (
           <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Top guesses (score)</div>
+              <div className="text-sm font-semibold">Alternative guesses</div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-zinc-500 dark:text-zinc-400">N</span>
+                <span className="text-zinc-500 dark:text-zinc-400">Show</span>
                 <input
                   type="number"
                   value={topN}
