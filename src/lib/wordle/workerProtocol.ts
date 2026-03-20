@@ -16,7 +16,7 @@ export function chooseCandidateSet(
   if (nextCanonical.length === 0 && nextBroad.length > 0) {
     return {
       next: nextBroad,
-      warning: 'Candidate list appears stale; using broader allowed-word matches. Consider refreshing possible_words.txt.',
+      warning: 'NYT picked a word outside the usual answer pool — switching to expanded vocabulary. The solver has adapted.',
     };
   }
 

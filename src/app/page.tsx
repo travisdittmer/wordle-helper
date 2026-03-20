@@ -8,6 +8,7 @@ import { computeWeights, DEFAULT_WEIGHT_CONFIG } from '@/lib/wordle/weights';
 import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
+import Link from 'next/link';
 import { FeedbackTiles } from '@/components/FeedbackTiles';
 import { GuessHistory } from '@/components/GuessHistory';
 import { InfoModal } from '@/components/InfoModal';
@@ -332,15 +333,24 @@ export default function Home() {
         <OnboardingOverlay />
         {/* Slim header */}
         <header className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
-          <button
-            onClick={() => setShowInfo(true)}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            aria-label="How does this work?"
-            title="How does this work?"
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
+            <button
+              onClick={() => setShowInfo(true)}
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-300 text-[10px] text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              aria-label="How does this work?"
+              title="How does this work?"
+            >
+              i
+            </button>
+          </div>
+          <Link
+            href="/history"
+            target="_blank"
+            className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
           >
-            i
-          </button>
+            history
+          </Link>
         </header>
 
         {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}

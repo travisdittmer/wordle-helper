@@ -1,2 +1,3 @@
 # Known modern Wordle answers missing from legacy possible_words list
 mooch
+oasis

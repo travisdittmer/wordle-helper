@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-Next.js 16 app (App Router, single page) that helps solve daily Wordle puzzles using an entropy-based solver with weighted priors.
+Next.js 16 app (App Router) that helps solve daily Wordle puzzles using an entropy-based solver with weighted priors. Two routes: solver (`/`) and answer history (`/history`).
 
 ### Core solver pipeline
 
@@ -41,8 +41,9 @@ Production default (`DEFAULT_WEIGHT_CONFIG`): past-answer weight only — benchm
 ### Wordlists
 
 `src/lib/wordlists.ts` is **auto-generated** by `scripts/sync-wordlists.mjs`. Do not edit it directly.
-- `POSSIBLE_WORDS` (~2310) — likely Wordle answers
+- `POSSIBLE_WORDS` (~2345) — likely Wordle answers
 - `ALLOWED_WORDS` (~13K) — all valid guesses including probe words
+- `NON_CANONICAL_ANSWERS` — set of words NYT used as answers that weren't in the original curated pool (e.g., MOOCH, OASIS). Sourced from `answer_overrides.txt`.
 - Source data: `src/data/allowed_words.txt`, `src/data/answers_by_date_wordlist.txt`
 - To add missing NYT answers, add to `src/data/answer_overrides.txt` then run `npm run sync:wordlists`
 
@@ -56,7 +57,15 @@ A daily GitHub Action (`.github/workflows/update-answers.yml`) runs `fetch:answe
 
 ### UI
 
-Single-page client component (`src/app/page.tsx`). Tailwind CSS v4 for styling. Features: tile-tap feedback entry, undo/reset, guess history with colored tiles, visual keyboard, top-N guess explorer, confidence indicator, analysis drawer.
+Tailwind CSS v4 for styling.
+
+**Solver** (`src/app/page.tsx`) — client component. Features: tile-tap feedback entry, undo/reset, guess history with colored tiles, visual keyboard, top-N guess explorer, confidence indicator, analysis drawer. Links to history page (opens in new tab to preserve solver state).
+
+**Answer History** (`src/app/history/page.tsx`) — client component. Displays all historical Wordle answers reverse-chronologically with search and filter. Annotates entries with two badges:
+- **reused** (amber) — NYT recycled a past answer; shows original puzzle number
+- **rare pick** (violet) — NYT picked a word outside the curated ~2,300 answer pool, from the broader ~13K accepted-guess list
+
+Includes an info modal explaining both phenomena. Stats bar shows live counts and rates.
 
 ### Analysis drawer
 

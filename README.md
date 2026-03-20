@@ -21,6 +21,7 @@ The solver picks guesses that maximize information entropy -- each guess is chos
 - Guess history with colored tiles
 - Top-N guess explorer for power users
 - Post-solve shareable emoji grid
+- **Answer history** (`/history`) -- every past Wordle answer with annotations for reused words and rare picks (words NYT chose from outside the expected answer pool)
 - Dark mode by default (matches Wordle's aesthetic)
 - Installable as a PWA
 - Runs entirely client-side via Web Worker
