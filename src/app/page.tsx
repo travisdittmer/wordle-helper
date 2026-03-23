@@ -5,7 +5,7 @@ import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, pastAnswerCounts, todayKey } from '@/lib/wordle/history';
 import { computeWeights, DEFAULT_WEIGHT_CONFIG } from '@/lib/wordle/weights';
-import { filterCandidatesByFeedback, topGuesses } from '@/lib/wordle/solver';
+import { filterCandidatesByFeedback, topGuesses, scoreGuessWeightedEntropy } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
 import Link from 'next/link';
@@ -16,10 +16,11 @@ import { VisualKeyboard } from '@/components/VisualKeyboard';
 import type { LetterState } from '@/components/VisualKeyboard';
 import { AnswerZone } from '@/components/AnswerZone';
 import { AnalysisDrawer } from '@/components/AnalysisDrawer';
-import { analyzeGuess, letterCoverage } from '@/lib/wordle/analysis';
+
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 import { SupportPopover } from '@/components/SupportPopover';
 import { ExploreAlternatives } from '@/components/ExploreAlternatives';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 function normalizeWord(s: string): string {
   return s.trim().toLowerCase();
@@ -259,23 +260,21 @@ export default function Home() {
   const topGuessesList = useMemo(() => {
     if (!explorerOpen) return [];
     const space = candidates.length > 200 ? allowedGuesses.slice(0, 4000) : allowedGuesses;
-    return topGuesses({ candidates, weights, allowedGuesses: space, limit: 50 });
-  }, [explorerOpen, candidates, weights, allowedGuesses]);
+    const list = topGuesses({ candidates, weights, allowedGuesses: space, limit: 50 });
+    // Ensure the solver's recommended guess appears in the list (the worker uses
+    // heuristic scoring which may pick a word not top-ranked by pure entropy).
+    if (recommended && !list.some(g => g.guess === recommended.guess)) {
+      const recScore = scoreGuessWeightedEntropy(recommended.guess, candidates, weights);
+      list.push({ guess: recommended.guess, score: recScore });
+      list.sort((a, b) => b.score - a.score);
+    }
+    return list;
+  }, [explorerOpen, candidates, weights, allowedGuesses, recommended]);
 
   // Derive keyboard letter states from history.
   const letterStates = useMemo(() => deriveLetterStates(history), [history]);
 
   const recommendedGuessStr = recommended?.guess ?? '';
-  const inlineAnalysis = useMemo(() => {
-    if (!recommendedGuessStr || activeCandidates.length === 0) return null;
-    const analysis = analyzeGuess(recommendedGuessStr, activeCandidates, activeWeights);
-    const coverage = letterCoverage(recommendedGuessStr, history);
-    return {
-      newLetterCount: coverage.newLetters.length,
-      solveChance: analysis.solveChance,
-      worstCase: analysis.worstCase,
-    };
-  }, [recommendedGuessStr, activeCandidates, activeWeights, history]);
 
   function onApplyFeedback() {
     setError(null);
@@ -342,9 +341,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
-      <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="flex flex-col gap-4">
+    <div className="relative z-10 min-h-screen text-zinc-900 dark:text-zinc-50">
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-8">
           <OnboardingOverlay />
           {/* Slim header */}
           <header className="flex items-center justify-between">
@@ -360,13 +358,14 @@ export default function Home() {
               </button>
             </div>
             <div className="flex items-center gap-3">
+              <ThemeToggle />
               <SupportPopover />
               <Link
                 href="/history"
                 target="_blank"
                 className="text-xs text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
               >
-                history
+                History
               </Link>
             </div>
           </header>
@@ -374,7 +373,7 @@ export default function Home() {
           {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
           {/* Solver Composer — unified recommendation + feedback */}
-          <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
+          <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-gradient-to-b dark:from-zinc-900 dark:to-zinc-950">
             <AnswerZone
               variant="embedded"
               candidateCount={remainingCandidatesDisplay}
@@ -385,13 +384,10 @@ export default function Home() {
               history={history}
               isProbe={isRecommendedProbe}
               onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
-              newLetterCount={inlineAnalysis?.newLetterCount}
-              solveChance={inlineAnalysis?.solveChance}
-              worstCase={inlineAnalysis?.worstCase}
             />
 
             {remainingCandidatesDisplay > 1 && (
-              <div className="border-t border-zinc-800/50" />
+              <div className="border-t border-zinc-200 dark:border-zinc-800/50" />
             )}
 
             {remainingCandidatesDisplay > 1 && (
@@ -402,8 +398,6 @@ export default function Home() {
                   tiles={tiles}
                   onTilesChange={setTiles}
                   onApply={onApplyFeedback}
-                  onUndo={history.length > 0 ? onUndo : undefined}
-                  onReset={history.length > 0 ? onReset : undefined}
                   error={error}
                   dataWarning={dataWarning}
                   statusLabel={
@@ -413,42 +407,31 @@ export default function Home() {
                         ? 'Your guess'
                         : null
                   }
-                  onUseSolverPick={
+                  onUseSuggestion={
                     recommended && guess !== recommended.guess
                       ? () => setGuess(recommended.guess)
                       : undefined
                   }
-                  onAnalyze={
+                  onCompare={
                     recommended && guess !== recommended.guess && guess.length === 5 && allowedGuessSet.has(normalizeWord(guess))
                       ? () => { setAnalysisGuess(normalizeWord(guess)); setAnalysisOpen(true); }
                       : undefined
                   }
-                  showHistoryActions={history.length > 0}
                 />
               </div>
             )}
           </section>
 
-          <ExploreAlternatives
-            open={explorerOpen}
-            onOpenChange={setExplorerOpen}
-            guesses={topGuessesList}
-            candidateSet={candidateSet}
-            onSelectGuess={setGuess}
-            candidateCount={remainingCandidatesDisplay}
-            showSpeedNote={candidates.length > 200}
-          />
-
-          <footer className="pb-6 text-xs text-zinc-500 dark:text-zinc-500">
-            {WORDLIST_META.possibleWordsCount.toLocaleString()} possible answers &mdash; {remainingCandidatesDisplay.toLocaleString()} remaining
-          </footer>
-        </div>
-
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
-          {/* History */}
+          {/* Guess history + undo/reset */}
           {history.length > 0 && (
-            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-              <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
+            <section className="rounded-xl border border-zinc-200/50 bg-white p-4 dark:border-zinc-800/50 dark:bg-zinc-950">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-zinc-400">Guesses</h2>
+                <div className="flex gap-3 text-xs">
+                  <button onClick={onUndo} className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 underline-offset-2 hover:underline">&#8617; Undo</button>
+                  <button onClick={onReset} className="text-red-400/70 hover:text-red-500 dark:text-red-500/50 dark:hover:text-red-400 underline-offset-2 hover:underline">Start over</button>
+                </div>
+              </div>
               <div className="mt-3">
                 <GuessHistory history={history} />
               </div>
@@ -457,14 +440,22 @@ export default function Home() {
 
           {/* Keyboard */}
           {history.length > 0 && (
-            <section className="rounded-xl border border-zinc-200/50 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
-              <h2 className="text-sm font-semibold text-zinc-400">Keyboard</h2>
-              <div className="mt-3">
-                <VisualKeyboard letterStates={letterStates} />
-              </div>
+            <section className="rounded-xl border border-zinc-200/50 bg-white p-4 dark:border-zinc-800/50 dark:bg-zinc-950">
+              <h2 className="text-sm font-semibold text-zinc-400 mb-3">Keyboard</h2>
+              <VisualKeyboard letterStates={letterStates} />
             </section>
           )}
-        </aside>
+
+          <ExploreAlternatives
+            open={explorerOpen}
+            onOpenChange={setExplorerOpen}
+            guesses={topGuessesList}
+            candidateSet={candidateSet}
+            onSelectGuess={setGuess}
+            candidateCount={remainingCandidatesDisplay}
+            totalCount={WORDLIST_META.possibleWordsCount}
+            showSpeedNote={candidates.length > 200}
+          />
       </main>
       {recommended && (
         <AnalysisDrawer

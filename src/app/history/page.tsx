@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ANSWERS_BY_DATE } from '@/lib/wordle/answersByDate';
 import { NON_CANONICAL_ANSWERS } from '@/lib/wordlists';
 import { SupportPopover } from '@/components/SupportPopover';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const ORIGIN = new Date(Date.UTC(2021, 5, 19));
 
@@ -215,7 +216,7 @@ export default function HistoryPage() {
   const stats = useMemo(() => computeStats(entries), [entries]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
+    <div className="relative z-10 min-h-screen text-zinc-900 dark:text-zinc-50">
       <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
         {showInfo && <HistoryInfoModal onClose={() => setShowInfo(false)} stats={stats} />}
 
@@ -233,12 +234,13 @@ export default function HistoryPage() {
             </button>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <SupportPopover />
             <Link
               href="/"
               className="text-sm text-zinc-500 underline-offset-2 hover:underline hover:text-zinc-300"
             >
-              solver
+              Solver
             </Link>
           </div>
         </header>
@@ -274,8 +276,8 @@ export default function HistoryPage() {
                   onClick={() => { setFilter(f); setVisibleCount(100); }}
                   className={`rounded-md px-2.5 py-1.5 text-xs transition-colors ${
                     filter === f
-                      ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900'
-                      : 'text-zinc-500 hover:text-zinc-300'
+                      ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
                   }`}
                 >
                   {f}
@@ -291,16 +293,16 @@ export default function HistoryPage() {
         </div>
 
         {/* Grouped answer list */}
-        <div className="flex flex-col">
+        <section className="rounded-xl border border-zinc-200/50 bg-white dark:border-zinc-800/50 dark:bg-zinc-950">
           {grouped.map((group) => (
             <div key={group.label}>
-              <div className="sticky top-14 z-[5] -mx-4 bg-zinc-100/90 px-5 py-1.5 text-xs font-semibold text-zinc-500 backdrop-blur-sm dark:bg-zinc-950/90">
+              <div className="sticky top-14 z-[5] bg-white/95 px-4 py-1.5 text-xs font-semibold text-zinc-500 backdrop-blur-sm dark:bg-zinc-950/95 border-b border-zinc-200/50 dark:border-zinc-800/50">
                 {group.label}
               </div>
               {group.entries.map((entry) => (
                 <div
                   key={entry.index}
-                  className="flex items-center justify-between border-b border-zinc-200/50 px-1 py-2.5 dark:border-zinc-800/50"
+                  className="flex items-center justify-between border-b border-zinc-200/50 px-4 py-2.5 dark:border-zinc-800/50"
                 >
                   <div className="flex items-center gap-3">
                     <span className="w-12 text-right font-mono text-xs tabular-nums text-zinc-500">
@@ -328,13 +330,13 @@ export default function HistoryPage() {
               ))}
             </div>
           ))}
-        </div>
+        </section>
 
         {/* Load more */}
         {visibleCount < reversed.length && (
           <button
             onClick={() => setVisibleCount((c) => c + 200)}
-            className="mx-auto my-4 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 transition-colors"
+            className="mx-auto my-4 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200 transition-colors"
           >
             Load more ({(reversed.length - visibleCount).toLocaleString()} remaining)
           </button>

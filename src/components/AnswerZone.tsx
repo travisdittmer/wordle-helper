@@ -74,10 +74,10 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   } else if (candidateCount >= 2 && candidateCount <= 25) {
     className = variant === 'embedded'
       ? "p-6"
-      : "rounded-xl border border-zinc-800 bg-zinc-950 p-6";
+      : "rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950";
     content = (
       <>
-        <div className="text-sm font-medium text-zinc-400">
+        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
           {candidateCount === 2 ? '50/50 \u2014 it\u2019s one of these:' :
            candidateCount <= 5 ? `Down to ${candidateCount} \u2014 should solve next guess:` :
            `${candidateCount} possible answers:`}
@@ -90,18 +90,18 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.04, duration: 0.15 }}
               onClick={() => onSelectWord(w)}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 font-mono text-sm font-semibold tracking-wide text-zinc-100 transition-colors hover:border-zinc-500 hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-1.5 font-mono text-sm font-semibold tracking-wide text-zinc-800 transition-colors hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:hover:bg-zinc-800"
             >
               {w.toUpperCase()}
             </motion.button>
           ))}
         </div>
         {recommended && (
-          <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
+          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
             {candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info-gathering probe (not an answer):'}{' '}
             <button
               onClick={() => onSelectWord(recommended.guess)}
-              className="font-mono font-semibold text-zinc-200 underline-offset-2 hover:underline"
+              className="font-mono font-semibold text-zinc-900 underline-offset-2 hover:underline dark:text-zinc-200"
             >
               {recommended.guess.toUpperCase()}
             </button>
@@ -110,7 +110,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         {recommended && onWhyClick && (
           <button
             onClick={onWhyClick}
-            className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+            className="mt-1 text-xs text-blue-500 hover:text-blue-400 underline-offset-2 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
           >
             {candidateCount <= 3 && candidates.length >= 2
               ? `Why not ${candidates.find(c => c !== recommended.guess)?.toUpperCase()}?`
@@ -122,40 +122,40 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
   } else if (candidateCount === 0) {
     className = variant === 'embedded'
       ? "p-6"
-      : "rounded-xl border border-red-900/50 bg-red-950/20 p-6";
+      : "rounded-xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20";
     content = (
       <>
-        <div className="text-sm font-medium text-red-400">No possible answers remain</div>
-        <div className="mt-1 text-xs text-red-400/70">Double-check your feedback tiles, or reset and try again.</div>
+        <div className="text-sm font-medium text-red-600 dark:text-red-400">No possible answers remain</div>
+        <div className="mt-1 text-xs text-red-500/70 dark:text-red-400/70">Double-check your feedback tiles, or reset and try again.</div>
       </>
     );
   } else {
     className = variant === 'embedded'
       ? "p-6"
-      : "rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-6";
+      : "rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-gradient-to-b dark:from-zinc-900 dark:to-zinc-950";
     content = isComputing ? (
       <div>
-        <div className="text-sm font-medium text-zinc-400">Finding best guess...</div>
+        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Finding best guess...</div>
         <div className="mt-2 flex gap-1">
           {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-10 w-10 rounded-lg bg-zinc-800 animate-pulse"
+              className="h-10 w-10 rounded-lg bg-zinc-200 animate-pulse dark:bg-zinc-800"
               style={{ animationDelay: `${i * 100}ms` }}
             />
           ))}
         </div>
         <div className="mt-3 flex gap-1.5">
-          <div className="h-5 w-20 rounded-full bg-zinc-800/50 animate-pulse" style={{ animationDelay: '200ms' }} />
-          <div className="h-5 w-24 rounded-full bg-zinc-800/50 animate-pulse" style={{ animationDelay: '300ms' }} />
+          <div className="h-5 w-20 rounded-full bg-zinc-200/50 animate-pulse dark:bg-zinc-800/50" style={{ animationDelay: '200ms' }} />
+          <div className="h-5 w-24 rounded-full bg-zinc-200/50 animate-pulse dark:bg-zinc-800/50" style={{ animationDelay: '300ms' }} />
         </div>
       </div>
     ) : recommended ? (
       <div>
-        <div className="text-sm font-medium text-zinc-400">
+        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
           {candidateCount > 50 ? 'Try this word next' : `${candidateCount} left \u2014 try this next`}
         </div>
-        <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-white">
+        <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-zinc-900 dark:text-white">
           {recommended.guess.toUpperCase()}
         </div>
         {isProbe && (
@@ -165,17 +165,17 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         {(newLetterCount != null || solveChance != null || worstCase != null) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {newLetterCount != null && newLetterCount > 0 && (
-              <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-medium text-blue-400">
+              <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
                 {newLetterCount} new letter{newLetterCount !== 1 ? 's' : ''}
               </span>
             )}
             {solveChance != null && solveChance > 0 && (
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                 {Math.round(solveChance * 100)}% solve chance
               </span>
             )}
             {worstCase != null && (
-              <span className="rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+              <span className="rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
                 worst case {worstCase} left
               </span>
             )}
@@ -184,7 +184,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         {recommended && onWhyClick && !isComputing && (
           <button
             onClick={onWhyClick}
-            className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+            className="mt-1 text-xs text-blue-500 hover:text-blue-400 underline-offset-2 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
           >
             Why this guess?
           </button>

@@ -6,24 +6,6 @@ interface InfoModalProps {
   onClose: () => void;
 }
 
-const CARDS = [
-  {
-    title: 'How to use',
-    icon: '1',
-    body: 'Type your guess (or use ours), tap tiles to match Wordle\u2019s colors, then hit Apply. Repeat until solved.',
-  },
-  {
-    title: 'Why probes help',
-    icon: '?',
-    body: 'Sometimes the best move isn\u2019t a possible answer \u2014 it\u2019s a word that eliminates the most options. We label these \u201Cinfo probes\u201D so you know.',
-  },
-  {
-    title: 'How scores work',
-    icon: '#',
-    body: 'The score is measured in bits. A score of 5.0 narrows things down by ~32\u00D7. Higher is better \u2014 like playing 20 Questions optimally.',
-  },
-];
-
 export function InfoModal({ onClose }: InfoModalProps) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -33,37 +15,57 @@ export function InfoModal({ onClose }: InfoModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/50 px-4 py-12" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-xl"
+        className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">How it works</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">How it works</h2>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
             aria-label="Close"
           >
-            &times;
+            ✕
           </button>
         </div>
 
-        <div className="space-y-3">
-          {CARDS.map((card) => (
-            <div key={card.title} className="flex gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-sm font-bold text-zinc-300">
-                {card.icon}
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-200">{card.title}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">{card.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="mt-4 space-y-4 text-sm text-zinc-700 dark:text-zinc-300">
+          <div>
+            <span className="font-medium">Getting started</span>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              Type your guess (or use the solver&rsquo;s suggestion), tap the tiles to match
+              the colors Wordle showed you, then hit Apply. Repeat until solved.
+            </p>
+          </div>
 
-        <p className="mt-4 text-center text-[10px] text-zinc-600">
-          The solver uses two-step lookahead with entropy maximization and weighted priors.
-        </p>
+          <div>
+            <span className="font-medium">Probes</span>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              Sometimes the best move isn&rsquo;t a possible answer &mdash; it&rsquo;s a word
+              that eliminates the most options. These are labeled &ldquo;probe&rdquo; so you
+              know the solver is gathering information, not guessing.
+            </p>
+          </div>
+
+          <div>
+            <span className="font-medium">Scores</span>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              Each guess is scored in bits of information. A score of 5.0 narrows the
+              remaining answers by ~32&times;. Higher is better &mdash; like playing
+              20 Questions optimally.
+            </p>
+          </div>
+
+          <div>
+            <span className="font-medium">Under the hood</span>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              The solver evaluates every allowed guess for how well it splits the remaining
+              answers, then looks two steps ahead to find the move that gets you to the
+              answer fastest. Past answers are downweighted since NYT is unlikely to repeat
+              them soon.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

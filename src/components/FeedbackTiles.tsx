@@ -35,9 +35,10 @@ interface FeedbackTilesProps {
   tiles: Tile[];
   guess: string;
   onTilesChange: (tiles: Tile[]) => void;
+  onClear?: () => void;
 }
 
-export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProps) {
+export function FeedbackTiles({ tiles, guess, onTilesChange, onClear }: FeedbackTilesProps) {
   const allDefault = tiles.every((t) => t === 'B');
   const [bouncingIdx, setBouncingIdx] = useState<number | null>(null);
 
@@ -49,24 +50,38 @@ export function FeedbackTiles({ tiles, guess, onTilesChange }: FeedbackTilesProp
 
   return (
     <div>
-      <div className="flex gap-2">
-        {tiles.map((t, i) => (
+      <div className="flex items-center gap-2">
+        <div className="flex gap-2">
+          {tiles.map((t, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <button
+                onClick={() => handleTileTap(i)}
+                className={`h-12 w-12 rounded-lg text-lg font-bold shadow-md transition-all duration-150 ${tileClass(t)} ${allDefault ? 'border-2' : 'border'} ${bouncingIdx === i ? 'scale-110' : 'active:scale-95'}`}
+                style={bouncingIdx === i ? { transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
+                aria-label={`Tile ${i + 1}: ${tileName(t)}. Tap to change.`}
+              >
+                {guess[i]?.toUpperCase() ?? ''}
+              </button>
+              {!allDefault && (
+                <span className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">{tileName(t)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        {onClear && (
           <button
-            key={i}
-            onClick={() => handleTileTap(i)}
-            className={`h-12 w-12 rounded-lg text-lg font-bold shadow-md transition-all duration-150 ${tileClass(t)} ${allDefault ? 'border-2' : 'border'} ${bouncingIdx === i ? 'scale-110' : 'active:scale-95'}`}
-            style={bouncingIdx === i ? { transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)' } : undefined}
-            aria-label={`Tile ${i + 1}: ${tileName(t)}. Tap to change.`}
+            onClick={onClear}
+            className="ml-1 self-start mt-3 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 underline-offset-2 hover:underline"
           >
-            {guess[i]?.toUpperCase() ?? ''}
+            Clear
           </button>
-        ))}
+        )}
       </div>
-      <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        {allDefault
-          ? 'Tap each tile to set the color Wordle showed you'
-          : tiles.map(tileName).join(' \u00B7 ')}
-      </div>
+      {allDefault && (
+        <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Tap each tile to set the color Wordle showed you
+        </div>
+      )}
     </div>
   );
 }
