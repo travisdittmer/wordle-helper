@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 interface GuessEntry {
   guess: string;
@@ -25,13 +25,14 @@ function classifyGuess(g: GuessEntry, candidateSet: Set<string>): string | null 
 
 export function ExploreAlternatives({ open, onOpenChange, guesses, candidateSet, onSelectGuess, candidateCount, totalCount, showSpeedNote }: ExploreAlternativesProps) {
   const [count, setCount] = useState(10);
+  const [isPending, startTransition] = useTransition();
 
   const visible = guesses.slice(0, count);
 
   return (
     <div>
       <button
-        onClick={() => onOpenChange(!open)}
+        onClick={() => startTransition(() => onOpenChange(!open))}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:text-zinc-300 dark:hover:bg-zinc-900/50 transition-colors"
       >
         <span className={`inline-block text-[10px] transition-transform duration-150 ${open ? 'rotate-90' : ''}`}>&#9654;</span>
@@ -39,7 +40,13 @@ export function ExploreAlternatives({ open, onOpenChange, guesses, candidateSet,
         <span className="ml-auto text-xs text-zinc-500">{totalCount.toLocaleString()} possible &mdash; {candidateCount.toLocaleString()} remaining</span>
       </button>
 
-      {open && (
+      {open && isPending && (
+        <div className="mt-1 flex items-center justify-center rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800/50 dark:bg-zinc-950">
+          <span className="text-xs text-zinc-500 animate-pulse">Scoring guesses&hellip;</span>
+        </div>
+      )}
+
+      {open && !isPending && (
         <div className="mt-1 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800/50 dark:bg-zinc-950">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-zinc-500">

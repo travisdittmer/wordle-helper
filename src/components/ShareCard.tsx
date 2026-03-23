@@ -27,7 +27,7 @@ export function ShareCard({ history, answer }: ShareCardProps) {
   const guessCount = lastIsAnswer ? history.length : history.length + 1;
   const lines = history.map((h) => patternToEmoji(h.pattern));
   if (!lastIsAnswer) lines.push(patternToEmoji('GGGGG' as Pattern));
-  const shareText = `Wordle Helper \u2192 Solved in ${guessCount}\n\n${lines.join('\n')}\n\nwordlehelper.app`;
+  const shareText = `Wordle Helper \u2192 Solved in ${guessCount}\n\n${lines.join('\n')}\n\nwordle.arco42.com`;
 
   async function onCopy() {
     try {

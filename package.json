@@ -14,6 +14,7 @@
     "benchmark:quick": "tsx scripts/benchmark.ts --quick"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "framer-motion": "^12.35.0",
     "next": "16.1.6",
     "react": "19.2.3",
