@@ -110,13 +110,18 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
         </div>
         {recommended && (
           <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-            {candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info-gathering probe (not an answer):'}{' '}
+            {candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info probe:'}{' '}
             <button
               onClick={() => onSelectWord(recommended.guess)}
               className="font-mono font-semibold text-zinc-900 underline-offset-2 hover:underline dark:text-zinc-200"
             >
               {recommended.guess.toUpperCase()}
             </button>
+            {!candidates.includes(recommended.guess) && (
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                probe
+              </span>
+            )}
           </div>
         )}
         {recommended && onWhyClick && (
@@ -124,9 +129,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
             onClick={onWhyClick}
             className="mt-1 text-xs text-blue-500 hover:text-blue-400 underline-offset-2 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
           >
-            {candidateCount <= 3 && candidates.length >= 2
-              ? `Why not ${candidates.find(c => c !== recommended.guess)?.toUpperCase()}?`
-              : 'Why this guess?'}
+            Why this guess?
           </button>
         )}
       </>
@@ -171,7 +174,12 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
           {recommended.guess.toUpperCase()}
         </div>
         {isProbe && (
-          <div className="mt-1 text-[11px] text-zinc-500">info probe — not a possible answer</div>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+              probe
+            </span>
+            <span className="text-[11px] text-zinc-500">not a possible answer — narrows the field</span>
+          </div>
         )}
         {/* Inline reasoning pills */}
         {(newLetterCount != null || solveChance != null || worstCase != null) && (

@@ -205,9 +205,10 @@ export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: str
 
     const searchSpace = [...candidates, ...topProbes];
 
-    // Candidate bonus: a candidate guess that happens to be the answer instantly solves.
-    // Per-candidate: (w_i / W) * log2(W / w_i) — always non-negative, depends only on
-    // relative weight (not absolute scale), so works correctly even when all weights are small.
+    // Candidate bonus: a candidate guess that happens to be the answer instantly solves,
+    // saving a guess. The expected value of this is simply p (the probability it's right).
+    // We use p directly rather than p * log2(1/p) (self-information) because the latter
+    // peaks at p ≈ 0.37 and incorrectly favors low-probability candidates over high-probability ones.
     const totalWeight = weights ? weights.reduce((a, b) => a + b, 0) : candidates.length;
     const candidateWeightMap = new Map<string, number>();
     for (let i = 0; i < candidates.length; i++) {
@@ -222,7 +223,7 @@ export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: str
         const gWeight = candidateWeightMap.get(g) ?? 0;
         if (gWeight > 0) {
           const p = gWeight / totalWeight;
-          s += p * Math.log2(1 / p);
+          s += p;
         }
       }
       if (s > bestScore) {

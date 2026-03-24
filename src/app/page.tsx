@@ -347,7 +347,11 @@ export default function Home() {
           {/* Slim header */}
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight">Wordle Helper</h1>
+              <img src="/icon.png" alt="" width={24} height={24} className="rounded" aria-hidden="true" />
+              <div className="flex flex-col">
+                <h1 className="text-lg font-semibold tracking-tight leading-tight">Wordle Helper</h1>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 leading-tight">Entropy-powered solver</span>
+              </div>
               <button
                 onClick={() => setShowInfo(true)}
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"

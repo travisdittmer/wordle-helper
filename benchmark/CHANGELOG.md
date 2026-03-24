@@ -4,6 +4,15 @@ Tracks solver changes and benchmark results over time. Each entry records the gi
 
 ## Solver Versions
 
+### `7406b92` — 2026-03-24
+**fix: candidate bonus formula favored low-probability candidates over high-probability ones**
+
+The `candidateBonus` in `solver_fast.ts` (finishThreshold path) used `p * log2(1/p)` (self-information), which peaks at p ≈ 0.37 and decreases toward both 0 and 1. With asymmetric weights — e.g., BROOD (weight 1.0) vs FROND (weight 0.04, past answer) — the formula gave a larger bonus to the low-weight candidate (0.181) than the high-weight one (0.054), causing the solver to pick FROND over BROOD despite BROOD having a 96% solve chance.
+
+Fixed to use `p` directly (solve probability). This correctly prefers the candidate most likely to be the answer. For equal-weight candidates the two formulas are equivalent (`p * log2(1/p)` at p=0.5 equals 0.5 = p), so only asymmetric-weight scenarios are affected.
+
+Discovered via today's Wordle (BROOD, 2026-03-24): RAISE → COURD → FROND → BROOD. The solver should have recommended BROOD at guess 3.
+
 ### `885531a` / `ef499ee` — 2026-03-16
 **fix: candidate bonus went negative when all candidates had low weights**
 
