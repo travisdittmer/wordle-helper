@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Pattern } from '@/lib/wordle/feedback';
+import { getSentence } from '@/lib/wordle/sentences';
 import { ShareCard } from './ShareCard';
 
 interface AnswerZoneProps {
@@ -31,6 +32,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
 
   if (candidateCount === 1) {
     const solvedWord = candidates[0].toUpperCase();
+    const sentence = getSentence(candidates[0]);
     className = variant === 'embedded'
       ? "p-6 border-l-2 border-emerald-500/60"
       : "rounded-xl border-2 border-emerald-400 bg-emerald-50 p-6 dark:border-emerald-500/60 dark:bg-emerald-950/30 solved-glow";
@@ -62,6 +64,16 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
             </motion.span>
           ))}
         </div>
+        {sentence && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.4 }}
+            className="mt-3 text-sm italic text-emerald-700/80 dark:text-emerald-400/70 leading-relaxed"
+          >
+            {sentence}
+          </motion.p>
+        )}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
