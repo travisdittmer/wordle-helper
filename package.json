@@ -10,6 +10,7 @@
     "test": "tsx --test src/**/*.test.ts && tsx --test scripts/benchmark-*.test.ts && node --test scripts/*.test.mjs",
     "sync:wordlists": "node scripts/sync-wordlists.mjs",
     "fetch:answers": "node scripts/fetch-answers.mjs",
+    "fetch:allowed": "node scripts/fetch-allowed-words.mjs",
     "benchmark": "tsx scripts/benchmark.ts",
     "benchmark:quick": "tsx scripts/benchmark.ts --quick"
   },
