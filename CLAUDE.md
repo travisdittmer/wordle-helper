@@ -11,8 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run sync:wordlists` — regenerate `src/lib/wordlists.ts` from source data files
 - `npm run fetch:answers` — fetch confirmed answers from NYT API, update `answersByDate.ts`
 - `npm run fetch:allowed` — fetch complete valid-guess list from NYT Wordle JS bundle, update `allowed_words.txt`
-- `npm run benchmark` — full benchmark: play all historical games (~5-15 min)
-- `npm run benchmark:quick` — quick benchmark: skip lookahead (~1-2 min)
+- `npm run benchmark` — full benchmark: play all historical games (~2-3 hours)
+- `npm run benchmark:quick` — quick benchmark: skip lookahead (~20 min)
 
 ## Architecture
 

@@ -1,0 +1,9 @@
+{
+  "name": "true-uniform",
+  "pastAnswer": {
+    "usedOnce": 1.0,
+    "usedTwice": 1.0
+  },
+  "frequencyWeightRange": [1.0, 1.0],
+  "seasonalBoostEnabled": false
+}

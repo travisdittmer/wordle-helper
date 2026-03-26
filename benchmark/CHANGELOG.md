@@ -4,6 +4,15 @@ Tracks solver changes and benchmark results over time. Each entry records the gi
 
 ## Solver Versions
 
+### `9783e6a` — 2026-03-26
+**feat: expand ALLOWED_WORDS from 12,953 to 14,855 via NYT bundle extraction**
+
+Added `scripts/fetch-allowed-words.mjs` which extracts the complete valid-guess list directly from NYT's Wordle JS bundle. The previous list (sourced from 3Blue1Brown) was missing 1,902 words that NYT accepts (e.g., TARSE). Also fixed the Explore tab's `topGuesses()` to use heuristic shortlisting instead of naive `.slice(0, 2000)`.
+
+Added `production.json` benchmark config that exactly matches `DEFAULT_WEIGHT_CONFIG` in `weights.ts` (past-answer only, no frequency, no seasonal). Previous "production-equivalent" config (`flat-frequency`) incorrectly had `seasonalBoostEnabled: true`.
+
+Added `true-uniform.json` for pure uniform entropy comparison.
+
 ### `7406b92` — 2026-03-24
 **fix: candidate bonus formula favored low-probability candidates over high-probability ones**
 
@@ -40,6 +49,27 @@ Initial benchmark harness. Plays all historical Wordle games with configurable w
 ---
 
 ## Benchmark Runs
+
+### 2026-03-26 — `9783e6a` (14,855 allowed words + production config)
+
+| Config | Mode | Avg | Solve % | Fails | Time | Games |
+|--------|------|-----|---------|-------|------|-------|
+| production | quick | 3.329 | 100.0% | 0 | ~21 min | 1741 |
+| true-uniform | quick | 3.505 | 99.9% | 1 | ~21 min | 1741 |
+| baseline-v1 | quick | 3.311 | 100.0% | 0 | ~21 min | 1741 |
+
+**production quick** (exact match of `DEFAULT_WEIGHT_CONFIG`):
+- First guess: TARSE (59%, games 0–~1001) then RAISE (41%, games ~1002–1740). Transition occurs as past-answer downweighting accumulates.
+- 0 failures, 100% solve rate.
+- 3-or-fewer rate: 64.1%.
+
+**true-uniform quick** (all candidates weight 1.0):
+- First guess: TARSE (100%).
+- 1 failure: POKER (tarse → rider → lower → hoven → forex → joker).
+- 3-or-fewer rate: 51.5%.
+- Production weights save 0.176 guesses/game vs uniform, confirming past-answer priors improve performance.
+
+**Note**: Quick mode now takes ~21 min (was ~2 min) due to expanded ALLOWED_WORDS (14,855 vs 12,953). The heuristic shortlist (500 words) evaluates proportionally more candidates.
 
 ### 2026-03-16 — `0b926e0` (candidateBonus fix + git tracking)
 
@@ -83,13 +113,15 @@ Key finding: removing frequency weighting (`flat-frequency`) was the single bigg
 
 Configs live in `benchmark/configs/*.json`. They control candidate weighting parameters — a separate variable from solver logic.
 
-| Config | Past (once) | Past (twice) | Freq Range | Seasonal |
-|--------|-------------|--------------|------------|----------|
-| baseline-v1 | 0.04 | 0.01 | [0.2, 1.0] | yes |
-| flat-frequency | 0.04 | 0.01 | [1.0, 1.0] | no |
-| no-seasonal | 0.04 | 0.01 | [0.2, 1.0] | no |
-| equal-weight | 0.04 | 0.01 | [1.0, 1.0] | yes |
-| higher-past-weight | 0.10 | 0.05 | [0.2, 1.0] | yes |
-| combined-v1 | 0.10 | 0.05 | [1.0, 1.0] | no |
+| Config | Past (once) | Past (twice) | Freq Range | Seasonal | Notes |
+|--------|-------------|--------------|------------|----------|-------|
+| **production** | 0.04 | 0.01 | [1.0, 1.0] | no | **Matches DEFAULT_WEIGHT_CONFIG** |
+| **true-uniform** | 1.0 | 1.0 | [1.0, 1.0] | no | All candidates equally weighted |
+| baseline-v1 | 0.04 | 0.01 | [0.2, 1.0] | yes | All factors enabled |
+| flat-frequency | 0.04 | 0.01 | [1.0, 1.0] | yes | No freq, but seasonal still on |
+| no-seasonal | 0.04 | 0.01 | [0.2, 1.0] | no | |
+| equal-weight | 1.0 | 1.0 | [0.2, 1.0] | yes | No past penalty, freq+seasonal on |
+| higher-past-weight | 0.10 | 0.03 | [0.2, 1.0] | yes | |
+| combined-v1 | 0.10 | 0.03 | [1.0, 1.0] | no | |
 
-Note: The production solver (`solverWorker.ts`) ignores frequency and seasonal weights entirely — it uses past-answer weight only. The benchmark engine applies config values faithfully, so benchmark results with `baseline-v1` do NOT match production behavior. Use `flat-frequency` to benchmark what production actually does.
+Note: Use `production` config to benchmark what the web app actually does. Previous advice to use `flat-frequency` was incorrect (it has `seasonalBoostEnabled: true`).
