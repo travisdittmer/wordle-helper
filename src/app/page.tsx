@@ -259,8 +259,7 @@ export default function Home() {
 
   const topGuessesList = useMemo(() => {
     if (!explorerOpen) return [];
-    const space = candidates.length > 200 ? allowedGuesses.slice(0, 2000) : allowedGuesses;
-    const list = topGuesses({ candidates, weights, allowedGuesses: space, limit: 50 });
+    const list = topGuesses({ candidates, weights, allowedGuesses, limit: 50 });
     // Ensure the solver's recommended guess appears in the list (the worker uses
     // heuristic scoring which may pick a word not top-ranked by pure entropy).
     if (recommended && !list.some(g => g.guess === recommended.guess)) {

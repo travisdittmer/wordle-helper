@@ -51,7 +51,7 @@ export function scoreGuessWeightedEntropy(guess: string, candidates: readonly st
  * Cheap heuristic to rank guesses before running full entropy.
  * Uses candidate letter frequencies (overall + positional) to approximate information gain.
  */
-function heuristicScore(guess: string, letterFreq: number[], posFreq: number[][]): number {
+export function heuristicScore(guess: string, letterFreq: number[], posFreq: number[][]): number {
   const seen = new Set<number>();
   let s = 0;
   for (let i = 0; i < 5; i++) {
@@ -68,7 +68,7 @@ function heuristicScore(guess: string, letterFreq: number[], posFreq: number[][]
   return s;
 }
 
-function buildFreqs(candidates: readonly string[], weights?: readonly number[]) {
+export function buildFreqs(candidates: readonly string[], weights?: readonly number[]) {
   const letterFreq = Array(26).fill(0);
   const posFreq = Array.from({ length: 5 }, () => Array(26).fill(0));
 

@@ -1,4 +1,5 @@
 import { feedbackPattern, Pattern } from './feedback';
+import { heuristicScore, buildFreqs } from './solver_fast';
 
 export type ScoreMode = 'entropy';
 
@@ -86,9 +87,27 @@ export function topGuesses(params: {
   weights?: readonly number[];
   allowedGuesses: readonly string[];
   limit?: number;
+  /** Max words to entropy-score (heuristic shortlist). 0 = score all. */
+  shortlistSize?: number;
 }): Array<{ guess: string; score: number }> {
-  const { candidates, weights, allowedGuesses, limit = 10 } = params;
-  const scored = allowedGuesses.map((g) => ({
+  const { candidates, weights, allowedGuesses, limit = 10, shortlistSize = 3000 } = params;
+
+  // Use heuristic shortlisting when the guess pool is large, matching
+  // the same approach solver_fast uses for the main recommendation.
+  let searchSpace: readonly string[];
+  if (shortlistSize > 0 && allowedGuesses.length > shortlistSize) {
+    const { letterFreq, posFreq } = buildFreqs(candidates, weights);
+    const ranked = allowedGuesses.map((g) => ({ g, s: heuristicScore(g, letterFreq, posFreq) }));
+    ranked.sort((a, b) => b.s - a.s);
+    const shortlist = new Set(ranked.slice(0, shortlistSize).map((x) => x.g));
+    // Always include actual candidates (they could be the answer).
+    for (const c of candidates) shortlist.add(c);
+    searchSpace = [...shortlist];
+  } else {
+    searchSpace = allowedGuesses;
+  }
+
+  const scored = searchSpace.map((g) => ({
     guess: g,
     score: weights ? scoreGuessWeightedEntropy(g, candidates, weights) : scoreGuessEntropy(g, candidates),
   }));
