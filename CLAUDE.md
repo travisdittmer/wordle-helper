@@ -32,12 +32,17 @@ Next.js 16 app (App Router) that helps solve daily Wordle puzzles using an entro
 
 ### Candidate weighting
 
-Shared weight computation in `src/lib/wordle/weights.ts` — used by both the production solver and benchmark engine. `WeightConfig` controls three multiplicative factors:
+Shared weight computation in `src/lib/wordle/weights.ts` — used by both the production solver and benchmark engine. `WeightConfig` controls four multiplicative factors:
 - **Past-answer weight** (`history.ts`) — NYT reuses past answers at ~11% rate (since Feb 2026); past answers get reduced weight (0.04 for used-once, 0.01 for used-twice) via `pastAnswerWeight(useCount, config?)`
 - **Word frequency** (`wordFrequency.ts`) — bigram/unigram scoring as a commonality proxy, maps to [0.2, 1.0]
 - **Seasonal boosts** (`seasonalBoost.ts`) — small multiplier for thematically relevant words by month/date
+- **Non-canonical penalty** — words outside the curated ~2,346 answer pool get weight × 0.1 (production default). Applied when `computeWeights` receives a `canonicalSet` parameter. The penalty is optional in `WeightConfig` (defaults to 1.0 = no penalty when unset).
 
-Production default (`DEFAULT_WEIGHT_CONFIG`): past-answer weight only — benchmark showed frequency and seasonal priors hurt performance.
+Production default (`DEFAULT_WEIGHT_CONFIG`): past-answer weight + non-canonical penalty — benchmark showed frequency and seasonal priors hurt performance.
+
+### Candidate blending
+
+When canonical candidates (from POSSIBLE_WORDS) drop to ≤ 20 (`BLEND_THRESHOLD` in `workerProtocol.ts`), extra broad candidates from ALLOWED_WORDS are blended into the candidate set. This ensures the solver is aware of non-canonical answer possibilities (e.g., CAROM, MOOCH) before they'd cause a blind guess. Non-canonical candidates receive a 0.1× weight penalty reflecting their low prior probability.
 
 ### Wordlists
 
@@ -101,3 +106,11 @@ Benchmark results include the git commit hash in the JSON and filename for trace
 ### Path alias
 
 `@/*` maps to `./src/*` (configured in tsconfig.json).
+
+## Session Continuity
+
+This project uses structured session handoffs for cross-session context.
+
+- At session start: check if `HANDOFF.md` exists in the project root. If it does, read it silently to recover context from the previous session. Don't dump the contents — just use the context to inform your work.
+- At session end: when the user says "handoff", "wrap up", "end session", or similar, run the `/project:handoff` workflow to capture session state.
+- Handoff archives live in `.claude/handoffs/` with timestamps.

@@ -13,6 +13,7 @@ export type WorkerResponse =
   | { type: 'pong' };
 
 const allowedGuesses = Array.from(new Set([...ALLOWED_WORDS, ...POSSIBLE_WORDS]));
+const possibleSet: ReadonlySet<string> = new Set(POSSIBLE_WORDS);
 
 self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
   const msg = ev.data;
@@ -26,7 +27,7 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
 
   try {
     const counts = pastAnswerCounts(new Date());
-    const weights = computeWeights(msg.candidates, counts, DEFAULT_WEIGHT_CONFIG);
+    const weights = computeWeights(msg.candidates, counts, DEFAULT_WEIGHT_CONFIG, possibleSet);
 
     const { guess, score } = bestNextGuessHeuristic({
       candidates: msg.candidates,

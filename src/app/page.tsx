@@ -239,10 +239,12 @@ export default function Home() {
     return isValidPattern(p) ? (p as Pattern) : null;
   }, [tiles]);
 
+  const possibleSet = useMemo<ReadonlySet<string>>(() => new Set(POSSIBLE_WORDS), []);
+
   const weights = useMemo(() => {
     const counts = pastAnswerCounts(new Date());
-    return computeWeights(candidates, counts, DEFAULT_WEIGHT_CONFIG);
-  }, [candidates]);
+    return computeWeights(candidates, counts, DEFAULT_WEIGHT_CONFIG, possibleSet);
+  }, [candidates, possibleSet]);
 
   const activeCandidates = useMemo(() => {
     return candidates.filter((_, i) => weights[i] > 0);

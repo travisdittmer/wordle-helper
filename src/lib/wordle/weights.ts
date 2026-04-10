@@ -22,6 +22,8 @@ export interface WeightConfig {
   };
   frequencyWeightRange: [number, number];
   seasonalBoostEnabled: boolean;
+  /** Weight multiplier for words outside the curated answer pool (0–1). */
+  nonCanonicalPenalty?: number;
 }
 
 /**
@@ -36,16 +38,19 @@ export const DEFAULT_WEIGHT_CONFIG: WeightConfig = {
   },
   frequencyWeightRange: [1.0, 1.0],
   seasonalBoostEnabled: false,
+  nonCanonicalPenalty: 0.1,
 };
 
 export function computeWeights(
   candidates: readonly string[],
   pastCounts: Map<string, number>,
   config: WeightConfig = DEFAULT_WEIGHT_CONFIG,
+  canonicalSet?: ReadonlySet<string>,
 ): number[] {
   const freqW = frequencyWeights(candidates);
   const seasonal = config.seasonalBoostEnabled ? seasonalBoosts(candidates) : candidates.map(() => 1);
   const [minFreq, maxFreq] = config.frequencyWeightRange;
+  const ncPenalty = config.nonCanonicalPenalty ?? 1;
 
   return candidates.map((word, i) => {
     const useCount = pastCounts.get(word) ?? 0;
@@ -57,6 +62,10 @@ export function computeWeights(
     const normalizedFreq = (rawFreq - 0.2) / 0.8; // 0..1
     const freq = minFreq + normalizedFreq * (maxFreq - minFreq);
 
-    return pastFactor * freq * seasonal[i];
+    // Non-canonical words (not in curated answer pool) get a reduced weight.
+    // Only applied when canonicalSet is provided (production solver).
+    const canonicalFactor = canonicalSet && !canonicalSet.has(word) ? ncPenalty : 1;
+
+    return pastFactor * freq * seasonal[i] * canonicalFactor;
   });
 }
