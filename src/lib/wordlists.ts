@@ -3,7 +3,7 @@
 // allowed_words source: 3b1b/videos
 
 export const WORDLIST_META = {
-  generatedAt: "2026-08-23T05:50:54.665Z",
+  generatedAt: "2026-08-24T05:58:29.584Z",
   possibleWordsCount: 2357,
   allowedWordsCount: 14855,
   appendedFromAnswersByDateCount: 0,
