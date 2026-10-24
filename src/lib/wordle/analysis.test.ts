@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeGuess } from './analysis';
+import { analyzeGuess, formatPercent, rankCandidates } from './analysis';
 
 test('analyzeGuess: 2 candidates with equal weights', () => {
   const result = analyzeGuess('grade', ['grade', 'trade'], [1.0, 1.0]);
@@ -68,4 +68,23 @@ test('letterCoverage: positions with known greens are not new probes', () => {
   const result = letterCoverage('drape', history);
   assert.equal(result.positionsProbed[4], false);
   assert.equal(result.positionsProbed[0], true);
+});
+
+test('rankCandidates orders candidates by estimated probability', () => {
+  const ranked = rankCandidates(['glitz', 'blitz'], [0.1, 1]);
+  assert.deepEqual(ranked.map((r) => r.word), ['blitz', 'glitz']);
+  assert.ok(Math.abs(ranked[0].p - 1 / 1.1) < 1e-12);
+  assert.ok(Math.abs(ranked[1].p - 0.1 / 1.1) < 1e-12);
+});
+
+test('rankCandidates keeps the original order for equal probabilities', () => {
+  assert.deepEqual(rankCandidates(['fight', 'tight', 'wight'], [1, 1, 1]).map((r) => r.word), ['fight', 'tight', 'wight']);
+});
+
+test('formatPercent never rounds an uncertain estimate to 0% or 100%', () => {
+  assert.equal(formatPercent(0.909), '91%');
+  assert.equal(formatPercent(0.004), '<1%');
+  assert.equal(formatPercent(0.996), '>99%');
+  assert.equal(formatPercent(0), '0%');
+  assert.equal(formatPercent(1), '100%');
 });

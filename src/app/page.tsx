@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, useCallback } from 'react';
 import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, pastAnswerCounts, todayKey } from '@/lib/wordle/history';
 import { computeWeights, DEFAULT_WEIGHT_CONFIG } from '@/lib/wordle/weights';
-import { MAX_GUESSES, turnsLeft } from '@/lib/wordle/game';
+import { draftReducer, initialDraft } from '@/lib/wordle/draft';
+import { gameStatus, MAX_GUESSES, turnsLeft } from '@/lib/wordle/game';
 import { filterCandidatesByFeedback, topGuesses, scoreGuessWeightedEntropy } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
@@ -109,9 +110,13 @@ function deriveLetterStates(history: Array<{ guess: string; pattern: Pattern }>)
 
 export default function Home() {
   const [candidates, setCandidates] = useState<string[]>(() => initialCandidates(POSSIBLE_WORDS));
-  const [guess, setGuess] = useState<string>('');
-  const [tiles, setTiles] = useState<Tile[]>(['B', 'B', 'B', 'B', 'B']);
+  // Solver suggestions only fill the editor until the user edits it (see draft.ts).
+  const [draft, dispatchDraft] = useReducer(draftReducer, initialDraft);
+  const { guess, tiles } = draft;
+  const editGuess = useCallback((g: string) => dispatchDraft({ type: 'edit-guess', guess: g }), []);
+  const editTiles = useCallback((t: Tile[]) => dispatchDraft({ type: 'edit-tiles', tiles: t }), []);
   const [history, setHistory] = useState<Array<{ guess: string; pattern: Pattern }>>([]);
+  const status = gameStatus(history);
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [dataWarning, setDataWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -207,8 +212,7 @@ export default function Home() {
 
       if (msg.type === 'result') {
         setRecommended({ guess: msg.guess, score: msg.score });
-        setGuess(msg.guess);
-        setTiles(['B', 'B', 'B', 'B', 'B']);
+        dispatchDraft({ type: 'suggest', guess: msg.guess });
         setError(null);
         setIsComputing(false);
         setLastComputeMs(msg.tookMs);
@@ -223,8 +227,7 @@ export default function Home() {
     if (cached) {
       queueMicrotask(() => {
         setRecommended(cached.score != null ? { guess: cached.guess, score: cached.score } : null);
-        setGuess(cached.guess);
-        setTiles(['B', 'B', 'B', 'B', 'B']);
+        dispatchDraft({ type: 'suggest', guess: cached.guess });
       });
     }
 
@@ -237,7 +240,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pattern: Pattern | null = useMemo(() => {
+  const draftPattern: Pattern | null = useMemo(() => {
     const p = tiles.join('');
     return isValidPattern(p) ? (p as Pattern) : null;
   }, [tiles]);
@@ -278,10 +281,13 @@ export default function Home() {
   // Derive keyboard letter states from history.
   const letterStates = useMemo(() => deriveLetterStates(history), [history]);
 
-  function onApplyFeedback() {
+  /** Apply the editor's guess + tiles, or an explicit entry (e.g. "Mark solved"). */
+  function onApplyFeedback(entry?: { guess: string; pattern: Pattern }) {
+    if (status !== 'playing') return;
     setError(null);
     setDataWarning(null);
-    const g = normalizeWord(guess);
+    const g = normalizeWord(entry?.guess ?? guess);
+    const pattern = entry?.pattern ?? draftPattern;
     if (g.length !== 5) return setError('Guess must be 5 letters.');
     if (!allowedGuessSet.has(g)) return setError('Not in allowed guess list.');
     if (!pattern) return setError('Feedback pattern must be 5 tiles.');
@@ -308,11 +314,13 @@ export default function Home() {
     }
 
     // Push current state to undo stack before applying.
+    const nextHistory = [...history, { guess: g, pattern }];
     setUndoStack((stack) => [...stack, { candidates, broadCandidates }]);
-    setHistory((h) => [...h, { guess: g, pattern }]);
+    setHistory(nextHistory);
     setBroadCandidates(nextBroad);
     setCandidates(next);
-    computeRecommended(next, turnsLeft(history) - 1);
+    dispatchDraft({ type: 'board-changed' });
+    computeRecommended(next, gameStatus(nextHistory) === 'playing' ? turnsLeft(nextHistory) : 0);
     setAnalysisOpen(false);
   }
 
@@ -320,13 +328,15 @@ export default function Home() {
     if (undoStack.length === 0 || history.length === 0) return;
 
     const prev = undoStack[undoStack.length - 1];
+    const prevHistory = history.slice(0, -1);
     setUndoStack((stack) => stack.slice(0, -1));
-    setHistory((h) => h.slice(0, -1));
+    setHistory(prevHistory);
     setCandidates(prev.candidates);
     setBroadCandidates(prev.broadCandidates);
     setError(null);
     setDataWarning(null);
-    computeRecommended(prev.candidates, turnsLeft(history.slice(0, -1)));
+    dispatchDraft({ type: 'board-changed' });
+    computeRecommended(prev.candidates, turnsLeft(prevHistory));
     setAnalysisOpen(false);
   }
 
@@ -338,6 +348,7 @@ export default function Home() {
     setBroadCandidates(allowedGuesses);
     setHistory([]);
     setUndoStack([]);
+    dispatchDraft({ type: 'board-changed' });
     computeRecommended(next, MAX_GUESSES);
     setAnalysisOpen(false);
   }
@@ -384,26 +395,34 @@ export default function Home() {
               variant="embedded"
               candidateCount={remainingCandidatesDisplay}
               candidates={activeCandidates}
+              weights={activeWeights}
               recommended={recommended}
               isComputing={isComputing}
-              onSelectWord={(w) => setGuess(w)}
+              onSelectWord={editGuess}
               history={history}
+              status={status}
+              turnsLeft={turnsLeft(history)}
+              onConfirmSolved={
+                activeCandidates.length === 1
+                  ? () => onApplyFeedback({ guess: activeCandidates[0], pattern: 'GGGGG' })
+                  : undefined
+              }
               isProbe={isRecommendedProbe}
               onWhyClick={() => { setAnalysisGuess(recommended?.guess ?? ''); setAnalysisOpen(true); }}
             />
 
-            {remainingCandidatesDisplay > 1 && (
+            {status === 'playing' && (
               <div className="border-t border-zinc-200 dark:border-zinc-800/50" />
             )}
 
-            {remainingCandidatesDisplay > 1 && (
+            {status === 'playing' && (
               <div className="p-5">
                 <FeedbackEntry
                   guess={guess}
-                  onGuessChange={setGuess}
+                  onGuessChange={editGuess}
                   tiles={tiles}
-                  onTilesChange={setTiles}
-                  onApply={onApplyFeedback}
+                  onTilesChange={editTiles}
+                  onApply={() => onApplyFeedback()}
                   error={error}
                   dataWarning={dataWarning}
                   statusLabel={
@@ -415,7 +434,7 @@ export default function Home() {
                   }
                   onUseSuggestion={
                     recommended && guess !== recommended.guess
-                      ? () => setGuess(recommended.guess)
+                      ? () => editGuess(recommended.guess)
                       : undefined
                   }
                   onCompare={
@@ -457,7 +476,7 @@ export default function Home() {
             onOpenChange={setExplorerOpen}
             guesses={topGuessesList}
             candidateSet={candidateSet}
-            onSelectGuess={setGuess}
+            onSelectGuess={editGuess}
             candidateCount={remainingCandidatesDisplay}
             totalCount={WORDLIST_META.possibleWordsCount}
             showSpeedNote={candidates.length > 200}
