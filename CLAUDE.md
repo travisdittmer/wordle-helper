@@ -47,11 +47,11 @@ When canonical candidates (from POSSIBLE_WORDS) drop to ≤ 20 (`BLEND_THRESHOLD
 ### Wordlists
 
 `src/lib/wordlists.ts` is **auto-generated** by `scripts/sync-wordlists.mjs`. Do not edit it directly.
-- `POSSIBLE_WORDS` (~2345) — likely Wordle answers
+- `POSSIBLE_WORDS` (~2,380) — the curated list followed by every rare pick NYT has used
 - `ALLOWED_WORDS` (~14.9K) — all valid guesses including probe words, fetched from NYT's Wordle JS bundle
-- `NON_CANONICAL_ANSWERS` — set of words NYT used as answers that weren't in the original curated pool (e.g., MOOCH, OASIS). Sourced from `answer_overrides.txt`.
-- Source data: `src/data/allowed_words.txt`, `src/data/answers_by_date_wordlist.txt`
-- To add missing NYT answers, add to `src/data/answer_overrides.txt` then run `npm run sync:wordlists`
+- `NON_CANONICAL_ANSWERS` — every answer (from `answers_by_date_wordlist.txt` or `answer_overrides.txt`) that isn't in the curated list, e.g. GUANO, MOOCH, TRILL. Drives the history page's "rare pick" badge.
+- Source data: `src/data/possible_words.txt` (**frozen** curated list: NYT's 2,309-word version of the original Wordle answers; the sync script never rewrites it), `src/data/allowed_words.txt`, `src/data/answers_by_date_wordlist.txt`
+- To add an NYT answer before the daily fetch picks it up, add it to `src/data/answer_overrides.txt` then run `npm run sync:wordlists`
 - To refresh the full valid-guess list: `npm run fetch:allowed` then `npm run sync:wordlists`
 - A biweekly GitHub Action (`.github/workflows/update-allowed-words.yml`) runs `fetch:allowed` + `sync:wordlists` on the 1st and 15th of each month, with automatic rollback on failure.
 
