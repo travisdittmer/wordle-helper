@@ -155,14 +155,6 @@ function LetterCoverageSection({ coverage, guess }: { coverage: LetterCoverageRe
   );
 }
 
-/** Format a percentage: 0 → "0%", >0 but <1% → "<1%", otherwise round to integer. */
-function fmtPct(v: number): string {
-  const pct = v * 100;
-  if (pct === 0) return '0%';
-  if (pct < 1) return '<1%';
-  return `${Math.round(pct)}%`;
-}
-
 /**
  * Largest-remainder rounding: round fractions to integers that sum to 100.
  * Each input is a proportion (0–1). Returns integer percentages.
@@ -170,7 +162,7 @@ function fmtPct(v: number): string {
 function roundPcts(fractions: number[]): number[] {
   const raw = fractions.map(f => f * 100);
   const floored = raw.map(r => Math.floor(r));
-  let remainder = 100 - floored.reduce((a, b) => a + b, 0);
+  const remainder = 100 - floored.reduce((a, b) => a + b, 0);
   // Distribute remainder to entries with largest fractional parts
   const indexed = raw.map((r, i) => ({ i, frac: r - floored[i] }));
   indexed.sort((a, b) => b.frac - a.frac);

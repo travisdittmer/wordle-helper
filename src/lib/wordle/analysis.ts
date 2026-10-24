@@ -107,3 +107,24 @@ export function letterCoverage(
 
   return { newLetters, retested, positionsProbed };
 }
+
+/** Candidates with normalized probabilities, most likely first (stable for ties). */
+export function rankCandidates(
+  candidates: readonly string[],
+  weights: readonly number[],
+): Array<{ word: string; p: number }> {
+  const total = weights.reduce((a, b) => a + b, 0);
+  return candidates
+    .map((word, i) => ({ word, p: total > 0 ? (weights[i] ?? 0) / total : 0 }))
+    .sort((a, b) => b.p - a.p);
+}
+
+/** Percent for an estimate: never shows 0% or 100% unless it is exactly that. */
+export function formatPercent(p: number): string {
+  if (p <= 0) return '0%';
+  if (p >= 1) return '100%';
+  const pct = p * 100;
+  if (pct < 1) return '<1%';
+  if (pct > 99) return '>99%';
+  return `${Math.round(pct)}%`;
+}

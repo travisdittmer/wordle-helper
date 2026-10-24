@@ -2,16 +2,25 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Pattern } from '@/lib/wordle/feedback';
+import { formatPercent, rankCandidates } from '@/lib/wordle/analysis';
+import type { GameStatus } from '@/lib/wordle/game';
 import { getSentence } from '@/lib/wordle/sentences';
 import { ShareCard } from './ShareCard';
 
 interface AnswerZoneProps {
   candidateCount: number;
   candidates: string[];
+  /** Prior weights for `candidates` (same order); used for estimated chances. */
+  weights: number[];
   recommended: { guess: string; score: number } | null;
   isComputing: boolean;
   onSelectWord: (word: string) => void;
   history: Array<{ guess: string; pattern: Pattern }>;
+  status: GameStatus;
+  /** Guesses remaining, including the next one. */
+  turnsLeft: number;
+  /** Record the single remaining candidate as played with all-green feedback. */
+  onConfirmSolved?: () => void;
   /** Whether the recommended guess is a probe (not a possible answer). */
   isProbe?: boolean;
   onWhyClick?: () => void;
@@ -22,17 +31,41 @@ interface AnswerZoneProps {
   worstCase?: number;
 }
 
-export function AnswerZone({ candidateCount, candidates, recommended, isComputing, onSelectWord, history, isProbe, onWhyClick, variant = 'standalone', newLetterCount, solveChance, worstCase }: AnswerZoneProps) {
-  const stateKey = candidateCount === 1 ? 'solved' :
+function RankedChips({ ranked, onSelect }: { ranked: Array<{ word: string; p: number }>; onSelect?: (word: string) => void }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {ranked.map(({ word, p }, i) => (
+        <motion.button
+          key={word}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: i * 0.04, duration: 0.15 }}
+          onClick={onSelect ? () => onSelect(word) : undefined}
+          disabled={!onSelect}
+          className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-1.5 font-mono text-sm font-semibold tracking-wide text-zinc-800 transition-colors enabled:hover:border-zinc-400 enabled:hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:enabled:hover:border-zinc-500 dark:enabled:hover:bg-zinc-800"
+        >
+          {word.toUpperCase()}
+          <span className="ml-1.5 font-sans text-[10px] font-medium tracking-normal text-zinc-500 dark:text-zinc-400">{formatPercent(p)}</span>
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+export function AnswerZone({ candidateCount, candidates, weights, recommended, isComputing, onSelectWord, history, status, turnsLeft, onConfirmSolved, isProbe, onWhyClick, variant = 'standalone', newLetterCount, solveChance, worstCase }: AnswerZoneProps) {
+  const stateKey = status !== 'playing' ? status :
+                   candidateCount === 1 ? 'one-left' :
                    candidateCount >= 2 && candidateCount <= 25 ? 'shortlist' :
                    candidateCount === 0 ? 'empty' : 'suggest';
+  const lastGuess = turnsLeft === 1;
 
   let content: React.ReactNode;
   let className: string;
 
-  if (candidateCount === 1) {
-    const solvedWord = candidates[0].toUpperCase();
-    const sentence = getSentence(candidates[0]);
+  if (status === 'won') {
+    const answer = history[history.length - 1].guess;
+    const solvedWord = answer.toUpperCase();
+    const sentence = getSentence(answer);
     className = variant === 'embedded'
       ? "p-6 border-l-2 border-emerald-500/60"
       : "rounded-xl border-2 border-emerald-400 bg-emerald-50 p-6 dark:border-emerald-500/60 dark:bg-emerald-950/30 solved-glow";
@@ -79,38 +112,66 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.4 }}
         >
-          <ShareCard history={history} answer={candidates[0]} />
+          <ShareCard history={history} />
         </motion.div>
       </>
     );
-  } else if (candidateCount >= 2 && candidateCount <= 25) {
+  } else if (status === 'lost') {
+    const ranked = rankCandidates(candidates, weights).slice(0, 25);
+    className = variant === 'embedded'
+      ? "p-6"
+      : "rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950";
+    content = (
+      <>
+        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Out of guesses</div>
+        {ranked.length > 0 && (
+          <>
+            <div className="mt-1 text-xs text-zinc-500">Most likely answers, with estimated chances:</div>
+            <RankedChips ranked={ranked} />
+          </>
+        )}
+        <div className="mt-3 text-xs text-zinc-500">Undo to fix a tile, or start over.</div>
+      </>
+    );
+  } else if (candidateCount === 1) {
     className = variant === 'embedded'
       ? "p-6"
       : "rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950";
     content = (
       <>
         <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-          {candidateCount === 2 ? '50/50 \u2014 it\u2019s one of these:' :
-           candidateCount <= 5 ? `Down to ${candidateCount} \u2014 should solve next guess:` :
-           `${candidateCount} possible answers:`}
+          {lastGuess ? 'Last guess \u2014 only one word fits' : 'Only one word fits'}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {candidates.map((w, i) => (
-            <motion.button
-              key={w}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.04, duration: 0.15 }}
-              onClick={() => onSelectWord(w)}
-              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-1.5 font-mono text-sm font-semibold tracking-wide text-zinc-800 transition-colors hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:hover:bg-zinc-800"
+        <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-zinc-900 dark:text-white">
+          {candidates[0].toUpperCase()}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+          <span>Play it in Wordle. All green?</span>
+          {onConfirmSolved && (
+            <button
+              onClick={onConfirmSolved}
+              className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 font-medium text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
             >
-              {w.toUpperCase()}
-            </motion.button>
-          ))}
+              Mark solved
+            </button>
+          )}
         </div>
+      </>
+    );
+  } else if (candidateCount >= 2 && candidateCount <= 25) {
+    const ranked = rankCandidates(candidates, weights);
+    className = variant === 'embedded'
+      ? "p-6"
+      : "rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950";
+    content = (
+      <>
+        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          {candidateCount} possible answers <span className="font-normal text-zinc-500">&middot; most likely first</span>
+        </div>
+        <RankedChips ranked={ranked} onSelect={onSelectWord} />
         {recommended && (
           <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
-            {candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info probe:'}{' '}
+            {lastGuess ? 'Last guess \u2014 most likely answer:' : candidates.includes(recommended.guess) ? 'Best guess:' : 'Best info probe:'}{' '}
             <button
               onClick={() => onSelectWord(recommended.guess)}
               className="font-mono font-semibold text-zinc-900 underline-offset-2 hover:underline dark:text-zinc-200"
@@ -168,7 +229,7 @@ export function AnswerZone({ candidateCount, candidates, recommended, isComputin
     ) : recommended ? (
       <div>
         <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-          {candidateCount > 50 ? 'Try this word next' : `${candidateCount} left \u2014 try this next`}
+          {lastGuess ? 'Last guess \u2014 most likely answer' : candidateCount > 50 ? 'Try this word next' : `${candidateCount} left \u2014 try this next`}
         </div>
         <div className="mt-1 font-mono text-4xl font-bold tracking-widest text-zinc-900 dark:text-white">
           {recommended.guess.toUpperCase()}

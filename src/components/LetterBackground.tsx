@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -9,7 +9,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
  * and applies a slow CSS drift animation. Near-zero CPU cost after initial render.
  */
 export function LetterBackground() {
-  const [bgUrl, setBgUrl] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const tileSize = 300;
@@ -52,18 +52,16 @@ export function LetterBackground() {
       ctx.restore();
     }
 
-    setBgUrl(canvas.toDataURL('image/png'));
+    if (ref.current) ref.current.style.backgroundImage = `url(${canvas.toDataURL('image/png')})`;
   }, []);
-
-  if (!bgUrl) return null;
 
   return (
     <div
+      ref={ref}
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 motion-reduce:animate-none"
       style={{
         zIndex: 0,
-        backgroundImage: `url(${bgUrl})`,
         backgroundRepeat: 'repeat',
         backgroundSize: '300px 300px',
         animation: 'letter-drift 120s linear infinite',
