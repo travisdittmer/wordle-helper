@@ -5,6 +5,7 @@ import { ALLOWED_WORDS, POSSIBLE_WORDS, WORDLIST_META } from '@/lib/wordlists';
 import { isValidPattern, Pattern, Tile } from '@/lib/wordle/feedback';
 import { initialCandidates, knownPastAnswers, pastAnswerCounts, todayKey } from '@/lib/wordle/history';
 import { computeWeights, DEFAULT_WEIGHT_CONFIG } from '@/lib/wordle/weights';
+import { MAX_GUESSES, turnsLeft } from '@/lib/wordle/game';
 import { filterCandidatesByFeedback, topGuesses, scoreGuessWeightedEntropy } from '@/lib/wordle/solver';
 import type { WorkerResponse } from '@/lib/wordle/solverWorker';
 import { chooseCandidateSet, isStaleWorkerResponse, shouldCacheFirstGuess } from '@/lib/wordle/workerProtocol';
@@ -140,11 +141,13 @@ export default function Home() {
 
   const FIRST_GUESS_CACHE_KEY = `wordle-helper:first-guess:v1:${todayKey()}`;
 
-  const computeRecommended = useCallback((nextCandidates: string[]) => {
+  const computeRecommended = useCallback((nextCandidates: string[], guessesLeft: number) => {
     const w = workerRef.current;
     if (!w) return;
 
-    if (nextCandidates.length === 0) {
+    if (nextCandidates.length === 0 || guessesLeft <= 0) {
+      // Invalidate any in-flight request so its result can't refill a finished board.
+      requestIdRef.current++;
       setIsComputing(false);
       setLastComputeMs(null);
       setRecommended(null);
@@ -158,7 +161,7 @@ export default function Home() {
     latestRequestedCandidateCountRef.current = nextCandidates.length;
     setIsComputing(true);
     setLastComputeMs(null);
-    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates });
+    w.postMessage({ type: 'compute', requestId, candidates: nextCandidates, turnsLeft: guessesLeft });
   }, []);
 
   function loadCachedFirstGuess(): { guess: string; score?: number } | null {
@@ -225,7 +228,7 @@ export default function Home() {
       });
     }
 
-    queueMicrotask(() => computeRecommended(initialCandidates(POSSIBLE_WORDS)));
+    queueMicrotask(() => computeRecommended(initialCandidates(POSSIBLE_WORDS), MAX_GUESSES));
 
     return () => {
       w.terminate();
@@ -309,7 +312,7 @@ export default function Home() {
     setHistory((h) => [...h, { guess: g, pattern }]);
     setBroadCandidates(nextBroad);
     setCandidates(next);
-    computeRecommended(next);
+    computeRecommended(next, turnsLeft(history) - 1);
     setAnalysisOpen(false);
   }
 
@@ -323,7 +326,7 @@ export default function Home() {
     setBroadCandidates(prev.broadCandidates);
     setError(null);
     setDataWarning(null);
-    computeRecommended(prev.candidates);
+    computeRecommended(prev.candidates, turnsLeft(history.slice(0, -1)));
     setAnalysisOpen(false);
   }
 
@@ -335,7 +338,7 @@ export default function Home() {
     setBroadCandidates(allowedGuesses);
     setHistory([]);
     setUndoStack([]);
-    computeRecommended(next);
+    computeRecommended(next, MAX_GUESSES);
     setAnalysisOpen(false);
   }
 

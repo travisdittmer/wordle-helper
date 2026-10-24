@@ -4,7 +4,7 @@ import { bestNextGuessHeuristic } from './solver_fast';
 import { computeWeights, DEFAULT_WEIGHT_CONFIG } from './weights';
 
 export type WorkerRequest =
-  | { type: 'compute'; requestId: number; candidates: string[] }
+  | { type: 'compute'; requestId: number; candidates: string[]; turnsLeft: number }
   | { type: 'ping' };
 
 export type WorkerResponse =
@@ -35,6 +35,7 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
       allowedGuesses,
       finishThreshold: 50,
       shortlistSize: 2500,
+      turnsLeft: msg.turnsLeft,
     });
     const tookMs = performance.now() - t0;
     self.postMessage({ type: 'result', requestId: msg.requestId, guess, score, tookMs } satisfies WorkerResponse);

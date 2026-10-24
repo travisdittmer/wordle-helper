@@ -1,10 +1,9 @@
 import { feedbackPattern } from '../src/lib/wordle/feedback';
+import { MAX_GUESSES } from '../src/lib/wordle/game';
 import { filterCandidatesByFeedback } from '../src/lib/wordle/solver';
 import { bestNextGuessHeuristic } from '../src/lib/wordle/solver_fast';
 import { computeWeights } from '../src/lib/wordle/weights';
 import type { WeightConfig, GameResult } from './benchmark-types';
-
-const MAX_GUESSES = 6;
 
 export function playGame(opts: {
   answer: string;
@@ -30,6 +29,7 @@ export function playGame(opts: {
       finishThreshold: 50,
       shortlistSize: quick ? 500 : 2500,
       lookaheadThreshold: quick ? 0 : 200,
+      turnsLeft: MAX_GUESSES - round + 1,
     });
 
     guesses.push(guess);

@@ -10,6 +10,8 @@ export type NextGuessFastOptions = {
   shortlistSize?: number;
   /** Enable two-step lookahead when candidates are within this range. */
   lookaheadThreshold?: number;
+  /** Guesses remaining in the game, including this one. Undefined = no limit. */
+  turnsLeft?: number;
 };
 
 function entropyFromBucketWeights(totalWeight: number, bucketWeights: number[]): number {
@@ -185,10 +187,65 @@ function twoStepExpectedRemaining(
   return expectedRemaining;
 }
 
+/**
+ * Last guess: the only way to win is to guess the answer, so pick the most
+ * likely candidate. Score is its probability.
+ */
+function mostLikelyCandidate(candidates: readonly string[], weights: readonly number[] | undefined): { guess: string; score: number } {
+  const w = (i: number) => (weights ? (weights[i] ?? 0) : 1);
+  let best = 0;
+  let total = 0;
+  for (let i = 0; i < candidates.length; i++) {
+    total += w(i);
+    if (w(i) > w(best)) best = i;
+  }
+  return { guess: candidates[best], score: total > 0 ? w(best) / total : 0 };
+}
+
+/**
+ * Two guesses left: P(win) for guess g is P(g is the answer) plus, for each other
+ * feedback pattern, P(most likely word in that bucket). Since g's own GGGGG bucket
+ * holds only g, that is the sum of each bucket's max weight over the total.
+ * Ties go to the guess most likely to win immediately. Score is the win probability.
+ */
+function bestTwoTurnGuess(
+  candidates: readonly string[],
+  weights: readonly number[] | undefined,
+  allowedGuesses: readonly string[],
+): { guess: string; score: number } {
+  const ws = candidates.map((_, i) => (weights ? (weights[i] ?? 0) : 1));
+  const total = ws.reduce((a, b) => a + b, 0);
+  const weightOf = new Map<string, number>();
+  candidates.forEach((c, i) => weightOf.set(c, ws[i]));
+
+  let bestGuess = candidates[0];
+  let bestWin = -Infinity;
+  let bestNow = -Infinity;
+  for (const g of new Set([...candidates, ...allowedGuesses])) {
+    const bucketMax = new Map<Pattern, number>();
+    for (let i = 0; i < candidates.length; i++) {
+      if (ws[i] <= 0) continue;
+      const p = feedbackPattern(g, candidates[i]);
+      bucketMax.set(p, Math.max(bucketMax.get(p) ?? 0, ws[i]));
+    }
+    let win = 0;
+    for (const m of bucketMax.values()) win += m;
+    const now = weightOf.get(g) ?? 0;
+    if (win > bestWin + 1e-12 || (Math.abs(win - bestWin) <= 1e-12 && now > bestNow)) {
+      bestGuess = g;
+      bestWin = win;
+      bestNow = now;
+    }
+  }
+  return { guess: bestGuess, score: total > 0 ? bestWin / total : 0 };
+}
+
 export function bestNextGuessHeuristic(opts: NextGuessFastOptions): { guess: string; score: number } {
-  const { candidates, allowedGuesses, weights, finishThreshold = 50, shortlistSize = 2500, lookaheadThreshold = 200 } = opts;
+  const { candidates, allowedGuesses, weights, finishThreshold = 50, shortlistSize = 2500, lookaheadThreshold = 200, turnsLeft } = opts;
   if (candidates.length === 0) throw new Error('No candidates remain (inconsistent feedback?)');
   if (candidates.length === 1) return { guess: candidates[0], score: Number.POSITIVE_INFINITY };
+  if (turnsLeft === 1) return mostLikelyCandidate(candidates, weights);
+  if (turnsLeft === 2) return bestTwoTurnGuess(candidates, weights, allowedGuesses);
 
   // If close to finishing, entropy-score candidates and top probe words,
   // giving a small bonus to actual candidates (since they could be the answer).
