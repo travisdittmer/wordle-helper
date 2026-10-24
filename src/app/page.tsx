@@ -275,8 +275,6 @@ export default function Home() {
   // Derive keyboard letter states from history.
   const letterStates = useMemo(() => deriveLetterStates(history), [history]);
 
-  const recommendedGuessStr = recommended?.guess ?? '';
-
   function onApplyFeedback() {
     setError(null);
     setDataWarning(null);

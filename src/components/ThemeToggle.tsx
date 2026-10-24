@@ -1,21 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+
+// The <html> "dark" class is the source of truth; this component subscribes to it.
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+}
+
+const isDark = () => document.documentElement.classList.contains('dark');
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const dark = useSyncExternalStore(subscribe, isDark, () => false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark') {
-      setDark(true);
+    if (localStorage.getItem('theme') === 'dark') {
       document.documentElement.classList.add('dark');
     }
   }, []);
 
   function toggle() {
     const next = !dark;
-    setDark(next);
     if (next) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
